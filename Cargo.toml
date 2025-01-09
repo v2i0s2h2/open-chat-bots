@@ -1,0 +1,40 @@
+[workspace]
+members = [
+    "rs/examples/greet/canister",
+    "rs/examples/greet/loader",
+    "rs/sdk",
+    "rs/sdk_canister",
+    "rs/sdk_offchain",
+]
+resolver = "2"
+
+[workspace.dependencies]
+candid = "0.10.10"
+clap = "4.5.4"
+ct-codecs = "1.1.1"
+getrandom = { version = "0.2.15", features = ["custom"] }
+hmac-sha256 = { version = "1.1.7", features = ["traits010"] }
+http = "1.1.0"
+ic-agent = "0.39.1"
+ic-cdk = "0.17.0"
+ic-cdk-timers = "0.11.0"
+ic-http-certification = "2.5.0"
+ic_principal = "0.1.1"
+ic-stable-structures = "0.6.7"
+itertools = "0.13.0"
+p256 = { version = "0.13.2" }
+rand = "0.8.5"
+rmp-serde = "1.3.0"
+serde = "1.0.216"
+serde_json = "1.0.128"
+sha2 = "0.10.8"
+tokio = "1.37.0"
+
+[profile.release]
+lto = true
+opt-level = "z"
+codegen-units = 1
+debug = false
+
+[patch.crates-io]
+rmp-serde = { git = "https://github.com/hpeebles/msgpack-rust", rev = "832a3f48e67eea56c869715ae6e1045583dd011b" }
