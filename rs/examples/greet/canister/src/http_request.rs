@@ -1,4 +1,6 @@
-use crate::{execute_command::execute_command, get_definition::get_definition};
+use crate::{
+    execute_command::execute_command, get_definition::get_definition, metrics::get_metrics,
+};
 use ic_cdk::{query, update};
 use ic_http_certification::{HttpRequest, HttpResponse};
 use oc_bots_sdk::api::CommandResponse;
@@ -8,6 +10,13 @@ use std::str;
 #[query]
 fn http_request(request: HttpRequest) -> HttpResponse {
     if request.method.to_ascii_uppercase() == "GET" {
+        if let Ok(path) = request.get_path() {
+            if path == "metrics" {
+                let body = to_json(&get_metrics());
+                return text_response(200, body);
+            }
+        }
+
         // Return the `bot definition` regardless of the path
         let body = to_json(&get_definition());
         return text_response(200, body);

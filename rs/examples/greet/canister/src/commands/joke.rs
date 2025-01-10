@@ -9,7 +9,7 @@ pub fn joke(client: OpenChatClient) -> Result<SuccessResult, InternalError> {
     // Send the message to OpenChat but don't wait for the response
     let message = client.send_text_message(text, true);
 
-    state::mutate(increment_jokes_sent);
+    state::mutate(|state| state.increment_jokes_sent());
 
     Ok(SuccessResult {
         message: Some(message),

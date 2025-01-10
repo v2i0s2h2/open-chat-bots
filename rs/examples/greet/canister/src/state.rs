@@ -108,6 +108,18 @@ impl State {
         let index = rng::gen::<u32>() % self.jokes.len() as u32;
         self.jokes[&index].clone()
     }
+
+    pub fn joke_count(&self) -> u32 {
+        self.jokes.len() as u32
+    }
+
+    pub fn jokes_sent(&self) -> u32 {
+        self.jokes_sent
+    }
+
+    pub fn greets_sent(&self) -> u32 {
+        self.greets_sent
+    }
 }
 
 pub enum AuthResult {
