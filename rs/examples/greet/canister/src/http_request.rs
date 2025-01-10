@@ -11,7 +11,7 @@ use std::str;
 fn http_request(request: HttpRequest) -> HttpResponse {
     if request.method.to_ascii_uppercase() == "GET" {
         if let Ok(path) = request.get_path() {
-            if path == "metrics" {
+            if path == "/metrics" {
                 let body = to_json(&get_metrics());
                 return text_response(200, body);
             }
