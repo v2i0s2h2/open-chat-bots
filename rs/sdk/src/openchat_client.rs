@@ -1,33 +1,30 @@
-use ic_cdk::api::call::CallResult;
-use oc_bots_sdk::{
-    api::{Command, Message},
-    jwt,
-    types::{
-        ActionArgs, ActionResponse, BotAction, BotApiCallError, BotCommandClaims, BotMessageAction,
-        CanisterId, MessageContent, MessageId, MessageIndex, StringChat, TextContent, TokenError,
-        UserId,
-    },
+use crate::api::{Command, Message};
+use crate::runtime::Runtime;
+use crate::types::{
+    ActionArgs, BotAction, BotCommandClaims, BotMessageAction, MessageContent, MessageId,
+    MessageIndex, StringChat, TextContent, TokenError, UserId,
 };
+use crate::utils::jwt;
 
-use super::env;
-
-pub struct OpenChatClient {
+pub struct OpenChatClient<R> {
     jwt: String,
     claims: BotCommandClaims,
+    runtime: R,
 }
 
-impl OpenChatClient {
-    pub fn build(jwt: String, public_key: &str) -> Result<Self, TokenError> {
+impl<R: Runtime + Clone> OpenChatClient<R> {
+    pub fn build(jwt: String, public_key: &str, runtime: R) -> Result<Self, TokenError> {
         let claims = jwt::verify::<jwt::Claims<BotCommandClaims>>(&jwt, public_key)
             .map_err(|error| TokenError::Invalid(error.to_string()))?;
 
-        if claims.exp_ms() < env::now() {
+        if claims.exp_ms() < runtime.now() {
             return Err(TokenError::Expired);
         }
 
         Ok(Self {
             jwt,
             claims: claims.into_custom(),
+            runtime,
         })
     }
 
@@ -63,7 +60,7 @@ impl OpenChatClient {
             finalised,
         });
 
-        self.execute_bot_action(action);
+        self.execute_bot_action_fire_and_forget(action);
 
         Message {
             id: self.claims.message_id.clone(),
@@ -72,26 +69,16 @@ impl OpenChatClient {
         }
     }
 
-    fn execute_bot_action(&self, action: BotAction) {
+    fn execute_bot_action_fire_and_forget(&self, action: BotAction) {
         let args = ActionArgs {
             action,
             jwt: self.jwt.clone(),
         };
 
-        ic_cdk::spawn(execute_bot_action_inner(self.claims.bot_api_gateway, args));
-
-        async fn execute_bot_action_inner(bot_api_gateway: CanisterId, args: ActionArgs) {
-            let response: CallResult<(ActionResponse,)> =
-                ic_cdk::call(bot_api_gateway, "execute_bot_action", (&args,)).await;
-
-            let result = match response.map(|r| r.0) {
-                Ok(resp) => resp,
-                Err((code, message)) => Err(BotApiCallError::C2CError(code as i32, message)),
-            };
-
-            if let Some(error) = result.err() {
-                ic_cdk::println!("Failed to execute bot action: {:?}", error);
-            }
-        }
+        self.runtime.call_canister_fire_and_forget(
+            self.claims.bot_api_gateway,
+            "execute_bot_action",
+            (args,),
+        )
     }
 }

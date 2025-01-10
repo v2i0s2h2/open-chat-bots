@@ -1,9 +1,9 @@
-use oc_bots_sdk::api::{InternalError, SuccessResult};
-use oc_bots_sdk_canister::OpenChatClient;
-
 use crate::state;
+use oc_bots_sdk::api::{InternalError, SuccessResult};
+use oc_bots_sdk::OpenChatClient;
+use oc_bots_sdk_canister::CanisterRuntime;
 
-pub fn joke(client: OpenChatClient) -> Result<SuccessResult, InternalError> {
+pub fn joke(client: OpenChatClient<CanisterRuntime>) -> Result<SuccessResult, InternalError> {
     let text = state::read(|state| state.get_random_joke());
 
     // Send the message to OpenChat but don't wait for the response

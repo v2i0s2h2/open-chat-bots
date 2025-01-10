@@ -1,9 +1,10 @@
 use oc_bots_sdk::api::{InternalError, SuccessResult};
-use oc_bots_sdk_canister::OpenChatClient;
+use oc_bots_sdk::OpenChatClient;
+use oc_bots_sdk_canister::CanisterRuntime;
 
 use crate::state;
 
-pub fn greet(client: OpenChatClient) -> Result<SuccessResult, InternalError> {
+pub fn greet(client: OpenChatClient<CanisterRuntime>) -> Result<SuccessResult, InternalError> {
     let user_id = client.initiator();
     let text = format!("hello @UserId({user_id})");
 

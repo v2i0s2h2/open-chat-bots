@@ -15,7 +15,10 @@ pub async fn build(url: String, dfx_identity: &str) -> Agent {
         .expect("Failed to build IC agent");
 
     if !mainnet {
-        agent.fetch_root_key().await.expect("Couldn't fetch root key");
+        agent
+            .fetch_root_key()
+            .await
+            .expect("Couldn't fetch root key");
     }
 
     agent
@@ -34,7 +37,10 @@ fn is_mainnet(url: &str) -> bool {
 
 fn get_dfx_identity(name: &str) -> Box<dyn Identity> {
     let config_dfx_dir_path = get_user_dfx_config_dir().unwrap();
-    let pem_path = config_dfx_dir_path.join("identity").join(name).join("identity.pem");
+    let pem_path = config_dfx_dir_path
+        .join("identity")
+        .join(name)
+        .join("identity.pem");
     if !Path::exists(pem_path.as_path()) {
         panic!("Pem file not found at: {}", pem_path.as_path().display());
     }
@@ -43,6 +49,9 @@ fn get_dfx_identity(name: &str) -> Box<dyn Identity> {
     } else if let Ok(identity) = Secp256k1Identity::from_pem_file(pem_path.as_path()) {
         Box::new(identity)
     } else {
-        panic!("Failed to create identity from pem file: {}", pem_path.as_path().display());
+        panic!(
+            "Failed to create identity from pem file: {}",
+            pem_path.as_path().display()
+        );
     }
 }
