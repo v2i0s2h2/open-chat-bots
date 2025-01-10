@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::api::Command;
+
 use super::{CanisterId, MessageId, MessageIndex, StringChat, UserId};
 
 pub enum TokenError {
@@ -14,8 +16,6 @@ pub struct BotCommandClaims {
     pub chat: StringChat,
     pub thread_root_message_index: Option<MessageIndex>,
     pub message_id: MessageId,
-    pub command_name: String,
-    pub command_args: String,
-    pub command_text: String,
+    pub command: Command,
     pub bot_api_gateway: CanisterId,
 }

@@ -1,11 +1,31 @@
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{MessageContent, MessageId};
+use crate::types::{MessageContent, MessageId, UserId};
+
+#[derive(Serialize, Deserialize)]
+pub struct Command {
+    pub name: String,
+    pub args: Vec<CommandArg>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct CommandArg {
+    pub name: String,
+    pub value: CommandArgValue,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum CommandArgValue {
+    String(String),
+    Number(f64),
+    Boolean(bool),
+    User(UserId),
+}
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Serialize)]
-pub enum ExecuteCommandResponse {
+pub enum CommandResponse {
     Success(SuccessResult),
     BadRequest(BadRequest),
     InternalError(InternalError),

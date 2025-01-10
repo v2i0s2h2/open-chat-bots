@@ -1,10 +1,11 @@
 use ic_cdk::api::call::CallResult;
 use oc_bots_sdk::{
-    api::Message,
+    api::{Command, Message},
     jwt,
     types::{
-        ActionArgs, ActionResponse, BotAction, BotApiCallError, BotCommandClaims, BotMessageAction, CanisterId, MessageContent,
-        TextContent, TokenError,
+        ActionArgs, ActionResponse, BotAction, BotApiCallError, BotCommandClaims, BotMessageAction,
+        CanisterId, MessageContent, MessageId, MessageIndex, StringChat, TextContent, TokenError,
+        UserId,
     },
 };
 
@@ -30,8 +31,28 @@ impl OpenChatClient {
         })
     }
 
-    pub fn claims(&self) -> &BotCommandClaims {
-        &self.claims
+    pub fn initiator(&self) -> UserId {
+        self.claims.initiator
+    }
+
+    pub fn bot_id(&self) -> UserId {
+        self.claims.bot
+    }
+
+    pub fn chat(&self) -> &StringChat {
+        &self.claims.chat
+    }
+
+    pub fn thread_root_message_index(&self) -> Option<MessageIndex> {
+        self.claims.thread_root_message_index
+    }
+
+    pub fn message_id(&self) -> MessageId {
+        self.claims.message_id.clone()
+    }
+
+    pub fn command(&self) -> &Command {
+        &self.claims.command
     }
 
     pub fn send_text_message(&self, text: String, finalised: bool) -> Message {
@@ -60,7 +81,8 @@ impl OpenChatClient {
         ic_cdk::spawn(execute_bot_action_inner(self.claims.bot_api_gateway, args));
 
         async fn execute_bot_action_inner(bot_api_gateway: CanisterId, args: ActionArgs) {
-            let response: CallResult<(ActionResponse,)> = ic_cdk::call(bot_api_gateway, "execute_bot_command", (&args,)).await;
+            let response: CallResult<(ActionResponse,)> =
+                ic_cdk::call(bot_api_gateway, "execute_bot_action", (&args,)).await;
 
             let result = match response.map(|r| r.0) {
                 Ok(resp) => resp,

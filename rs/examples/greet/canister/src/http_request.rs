@@ -1,7 +1,7 @@
 use crate::{execute_command::execute_command, get_definition::get_definition};
 use ic_cdk::{query, update};
 use ic_http_certification::{HttpRequest, HttpResponse};
-use oc_bots_sdk::api::ExecuteCommandResponse;
+use oc_bots_sdk::api::CommandResponse;
 use serde::Serialize;
 use std::str;
 
@@ -34,9 +34,9 @@ async fn http_request_update(request: HttpRequest) -> HttpResponse {
                         let response = execute_command(jwt).await;
                         let body = to_json(&response);
                         let code = match response {
-                            ExecuteCommandResponse::Success(_) => 200,
-                            ExecuteCommandResponse::BadRequest(_) => 400,
-                            ExecuteCommandResponse::InternalError(_) => 500,
+                            CommandResponse::Success(_) => 200,
+                            CommandResponse::BadRequest(_) => 400,
+                            CommandResponse::InternalError(_) => 500,
                         };
 
                         (code, body)

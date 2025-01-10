@@ -10,7 +10,7 @@ pub type Nanoseconds = u64;
 pub type MessageId = String; // u128 encoded as string
 pub type Hash = [u8; 32];
 
-#[derive(CandidType, Serialize, Deserialize)]
+#[derive(CandidType, Serialize, Deserialize, Copy, Clone)]
 pub struct MessageIndex(u32);
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Copy)]

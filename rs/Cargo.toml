@@ -1,10 +1,10 @@
 [workspace]
 members = [
-    "rs/examples/greet/canister",
-    "rs/examples/greet/loader",
-    "rs/sdk",
-    "rs/sdk_canister",
-    "rs/sdk_offchain",
+    "examples/greet/canister",
+    "examples/greet/loader",
+    "sdk",
+    "sdk_canister",
+    "sdk_offchain",
 ]
 resolver = "2"
 

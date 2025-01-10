@@ -15,6 +15,10 @@ pub struct State {
     administrator: Principal,
     rng_seed: [u8; 32],
     jokes: HashMap<u32, String>,
+    #[serde(default)]
+    jokes_sent: u32,
+    #[serde(default)]
+    greets_sent: u32,
 }
 
 const STATE_ALREADY_INITIALIZED: &str = "State has already been initialized";
@@ -52,6 +56,8 @@ impl State {
             // To get a cryptographically secure seed use the async function:
             // `ic_cdk::api::management_canister::main::raw_rand()`
             rng_seed: env::entropy(),
+            jokes_sent: 0,
+            greets_sent: 0,
         }
     }
 
@@ -74,6 +80,14 @@ impl State {
         self.rng_seed = seed;
     }
 
+    pub fn increment_jokes_sent(&mut self) {
+        self.jokes_sent += 1;
+    }
+
+    pub fn increment_greets_sent(&mut self) {
+        self.greets_sent += 1;
+    }
+
     pub fn oc_public_key(&self) -> &str {
         &self.oc_public_key
     }
@@ -88,7 +102,8 @@ impl State {
 
     pub fn get_random_joke(&self) -> String {
         if self.jokes.is_empty() {
-            return "What is the difference between a duck? One of its legs is both the same!".to_string();
+            return "What is the difference between a duck? One of its legs is both the same!"
+                .to_string();
         }
         let index = rng::gen::<u32>() % self.jokes.len() as u32;
         self.jokes[&index].clone()

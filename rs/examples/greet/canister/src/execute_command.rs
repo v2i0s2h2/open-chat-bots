@@ -1,5 +1,5 @@
 use oc_bots_sdk::{
-    api::{BadRequest, ExecuteCommandResponse},
+    api::{BadRequest, CommandResponse},
     types::TokenError,
 };
 use oc_bots_sdk_canister::OpenChatClient;
@@ -9,25 +9,29 @@ use crate::{
     state::{self},
 };
 
-pub async fn execute_command(jwt: &str) -> ExecuteCommandResponse {
+pub async fn execute_command(jwt: &str) -> CommandResponse {
     let public_key = state::read(|state| state.oc_public_key().to_string());
 
-    let agent = match OpenChatClient::build(jwt.to_string(), &public_key) {
+    let client = match OpenChatClient::build(jwt.to_string(), &public_key) {
         Ok(a) => a,
         Err(bad_request) => match bad_request {
-            TokenError::Invalid(_) => return ExecuteCommandResponse::BadRequest(BadRequest::AccessTokenInvalid),
-            TokenError::Expired => return ExecuteCommandResponse::BadRequest(BadRequest::AccessTokenExpired),
+            TokenError::Invalid(_) => {
+                return CommandResponse::BadRequest(BadRequest::AccessTokenInvalid)
+            }
+            TokenError::Expired => {
+                return CommandResponse::BadRequest(BadRequest::AccessTokenExpired)
+            }
         },
     };
 
-    let result = match agent.claims().command_name.as_str() {
-        "greet" => commands::greet(agent),
-        "joke" => commands::joke(agent),
-        _ => return ExecuteCommandResponse::BadRequest(BadRequest::CommandNotFound),
+    let result = match client.command().name.as_str() {
+        "greet" => commands::greet(client),
+        "joke" => commands::joke(client),
+        _ => return CommandResponse::BadRequest(BadRequest::CommandNotFound),
     };
 
     match result {
-        Ok(success) => ExecuteCommandResponse::Success(success),
-        Err(internal_error) => ExecuteCommandResponse::InternalError(internal_error),
+        Ok(success) => CommandResponse::Success(success),
+        Err(internal_error) => CommandResponse::InternalError(internal_error),
     }
 }

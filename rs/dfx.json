@@ -4,7 +4,7 @@
     "greet_bot": {
       "type": "rust",
       "package": "greet_bot_canister",
-      "candid": "rs/examples/greet/canister/can.did",
+      "candid": "examples/greet/canister/can.did",
       "gzip": true
     }
   },
