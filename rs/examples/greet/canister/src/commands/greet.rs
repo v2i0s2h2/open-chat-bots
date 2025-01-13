@@ -14,7 +14,7 @@ pub fn greet(context: BotCommandContext) -> Result<SuccessResult, InternalError>
                 state::mutate(|state| state.increment_jokes_sent());
             }
             error => {
-                ic_cdk::println!("greet send_text_message: {args:?}, {error:?}");
+                ic_cdk::println!("send_text_message: {args:?}, {error:?}");
             }
         });
 
