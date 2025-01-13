@@ -12,7 +12,7 @@ pub struct OpenChatClient<R> {
     runtime: R,
 }
 
-impl<R: Runtime + Clone> OpenChatClient<R> {
+impl<R: Runtime> OpenChatClient<R> {
     pub fn build(jwt: String, public_key: &str, runtime: R) -> Result<Self, TokenError> {
         let claims = jwt::verify::<jwt::Claims<BotCommandClaims>>(&jwt, public_key)
             .map_err(|error| TokenError::Invalid(error.to_string()))?;

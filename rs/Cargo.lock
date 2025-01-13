@@ -1515,7 +1515,6 @@ dependencies = [
  "candid",
  "ic-cdk",
  "oc_bots_sdk",
- "serde_json",
  "sha2 0.10.8",
 ]
 
