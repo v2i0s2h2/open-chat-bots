@@ -9,13 +9,15 @@ pub struct ActionArgs {
     pub jwt: String,
 }
 
-pub type ActionResponse = Result<(), BotApiCallError>;
+pub type CallResult<T> = Result<T, CallError>;
+pub type CallError = (i32, String);
+
+pub type ActionResponse = CallResult<(Result<(), BotApiError>,)>;
 
 #[derive(CandidType, Deserialize, Clone, Debug)]
-pub enum BotApiCallError {
+pub enum BotApiError {
     Invalid(String),
     CanisterError(CanisterError),
-    C2CError(i32, String),
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]

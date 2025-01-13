@@ -1,4 +1,4 @@
-use crate::types::{CanisterId, TimestampMillis};
+use crate::types::{CallResult, CanisterId, TimestampMillis};
 use candid::utils::{ArgumentDecoder, ArgumentEncoder};
 use std::future::Future;
 
@@ -8,13 +8,18 @@ pub trait Runtime {
         canister_id: CanisterId,
         method_name: &str,
         args: A,
-    ) -> impl Future<Output = Result<R, (i32, String)>>;
+    ) -> impl Future<Output = CallResult<R>>;
 
-    fn call_canister_fire_and_forget<A: ArgumentEncoder + 'static>(
+    fn call_canister_fire_and_forget<
+        A: ArgumentEncoder + 'static,
+        R: for<'a> ArgumentDecoder<'a>,
+        F: FnOnce(CallResult<R>) + 'static,
+    >(
         &self,
         canister_id: CanisterId,
         method_name: &'static str,
         args: A,
+        on_result: F,
     );
 
     fn now(&self) -> TimestampMillis;

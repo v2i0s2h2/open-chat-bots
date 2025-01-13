@@ -1,19 +1,33 @@
 use crate::api::{Command, Message};
 use crate::runtime::Runtime;
 use crate::types::{
-    ActionArgs, BotAction, BotCommandClaims, BotMessageAction, MessageContent, MessageId,
-    MessageIndex, StringChat, TextContent, TokenError, UserId,
+    ActionArgs, ActionResponse, BotAction, BotCommandClaims, BotMessageAction, MessageContent,
+    MessageId, MessageIndex, StringChat, TextContent, TokenError, UserId,
 };
 use crate::utils::jwt;
 
-pub struct OpenChatClient<R> {
+pub struct OpenChatClient<R, F = fn(ActionArgs, ActionResponse)> {
     jwt: String,
     claims: BotCommandClaims,
     runtime: R,
+    on_result: F,
 }
 
-impl<R: Runtime> OpenChatClient<R> {
+impl<R: Runtime> OpenChatClient<R, fn(ActionArgs, ActionResponse)> {
     pub fn build(jwt: String, public_key: &str, runtime: R) -> Result<Self, TokenError> {
+        Self::build_with_callback(jwt, public_key, runtime, default_on_result)
+    }
+}
+
+fn default_on_result(_args: ActionArgs, _result: ActionResponse) {}
+
+impl<R: Runtime, F: Fn(ActionArgs, ActionResponse) + Clone + 'static> OpenChatClient<R, F> {
+    pub fn build_with_callback(
+        jwt: String,
+        public_key: &str,
+        runtime: R,
+        on_result: F,
+    ) -> Result<Self, TokenError> {
         let claims = jwt::verify::<jwt::Claims<BotCommandClaims>>(&jwt, public_key)
             .map_err(|error| TokenError::Invalid(error.to_string()))?;
 
@@ -25,6 +39,7 @@ impl<R: Runtime> OpenChatClient<R> {
             jwt,
             claims: claims.into_custom(),
             runtime,
+            on_result,
         })
     }
 
@@ -75,10 +90,13 @@ impl<R: Runtime> OpenChatClient<R> {
             jwt: self.jwt.clone(),
         };
 
+        let callback = self.on_result.clone();
+
         self.runtime.call_canister_fire_and_forget(
             self.claims.bot_api_gateway,
             "execute_bot_action",
-            (args,),
+            (args.clone(),),
+            move |result: ActionResponse| (callback)(args, result),
         )
     }
 }
