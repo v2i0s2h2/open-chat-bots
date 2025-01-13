@@ -19,7 +19,7 @@ pub trait Runtime {
         canister_id: CanisterId,
         method_name: &'static str,
         args: A,
-        on_result: F,
+        on_response: F,
     );
 
     fn now(&self) -> TimestampMillis;

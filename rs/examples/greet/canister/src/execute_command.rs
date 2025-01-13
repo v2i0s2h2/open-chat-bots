@@ -1,15 +1,15 @@
 use crate::{commands, state};
+use oc_bots_sdk::types::BotCommandContext;
 use oc_bots_sdk::{
     api::{BadRequest, CommandResponse},
     types::TokenError,
-    OpenChatClient,
 };
-use oc_bots_sdk_canister::CanisterRuntime;
+use oc_bots_sdk_canister::env::now;
 
 pub async fn execute_command(jwt: &str) -> CommandResponse {
     let public_key = state::read(|state| state.oc_public_key().to_string());
 
-    let client = match OpenChatClient::build(jwt.to_string(), &public_key, CanisterRuntime) {
+    let context = match BotCommandContext::parse(jwt.to_string(), &public_key, now()) {
         Ok(a) => a,
         Err(bad_request) => {
             return match bad_request {
@@ -21,9 +21,9 @@ pub async fn execute_command(jwt: &str) -> CommandResponse {
         }
     };
 
-    let result = match client.command().name.as_str() {
-        "greet" => commands::greet(client),
-        "joke" => commands::joke(client),
+    let result = match context.command().name.as_str() {
+        "greet" => commands::greet(context),
+        "joke" => commands::joke(context),
         _ => return CommandResponse::BadRequest(BadRequest::CommandNotFound),
     };
 

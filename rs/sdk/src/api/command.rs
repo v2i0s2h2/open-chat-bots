@@ -3,19 +3,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::{MessageContent, MessageId, UserId};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Command {
     pub name: String,
     pub args: Vec<CommandArg>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CommandArg {
     pub name: String,
     pub value: CommandArgValue,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum CommandArgValue {
     String(String),
     Number(f64),

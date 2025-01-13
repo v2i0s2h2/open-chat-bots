@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::MessageContent;
 
-#[derive(CandidType, Serialize, Clone)]
+#[derive(CandidType, Serialize, Clone, Debug)]
 pub struct ActionArgs {
     pub action: BotAction,
     pub jwt: String,
@@ -27,12 +27,12 @@ pub enum CanisterError {
     Other(String),
 }
 
-#[derive(CandidType, Serialize, Clone)]
+#[derive(CandidType, Serialize, Clone, Debug)]
 pub enum BotAction {
     SendMessage(BotMessageAction),
 }
 
-#[derive(CandidType, Serialize, Clone)]
+#[derive(CandidType, Serialize, Clone, Debug)]
 pub struct BotMessageAction {
     pub content: MessageContent,
     pub finalised: bool,

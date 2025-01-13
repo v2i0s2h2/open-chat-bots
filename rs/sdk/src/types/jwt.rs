@@ -9,7 +9,7 @@ pub enum TokenError {
     Expired,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct BotCommandClaims {
     pub initiator: UserId,
     pub bot: UserId,
