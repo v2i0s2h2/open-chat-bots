@@ -9,5 +9,4 @@ edition = "2021"
 candid = { workspace = true }
 ic-cdk = { workspace = true }
 oc_bots_sdk = { path = "../sdk" }
-serde_json = { workspace = true }
 sha2 = { workspace = true }
