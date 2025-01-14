@@ -20,7 +20,7 @@ npm i @open-ic/openchat-botclient-ts
 
 ## Initialisation
 
-The library exports a `BotClient` constructor which is designed to be created at the beginning of an execute_command POST request. One ideomatic way to achieve this is to use middleware on the request root to create the instance of the `BotClient`.
+The library exports a `BotClient` constructor which is designed to be created at the beginning of an execute_command POST request. One idiomatic way to achieve this is to use middleware on the request root to create the instance of the `BotClient`.
 
 For an example of this you can refer to [the middleware](./packages/example/src/middleware/botclient.ts) used in the sample implementation.
 
