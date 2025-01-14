@@ -1,8 +1,8 @@
 import { Response } from "express";
 import fs from "fs";
 import mime from "mime-types";
-import { placeholderResponse } from "./placeholder";
 import { ExtendedRequest } from "../types";
+import { success } from "./success";
 
 async function processFile(filePath: string) {
   try {
@@ -23,11 +23,14 @@ async function processFile(filePath: string) {
 
 export default async function file(req: ExtendedRequest, res: Response) {
   const client = req.botClient;
-  const placeholder = "Uploading file ...";
+  const placeholder = await client.createTextMessage(
+    false,
+    "Uploading file ..."
+  );
 
-  client.sendTextMessage(false, placeholder);
+  client.sendMessage(placeholder);
 
-  res.status(200).json(placeholderResponse(client, placeholder, false));
+  res.status(200).json(success(placeholder));
 
   const filePath = "./dummy.pdf";
   const { uint8Array, fileSize, mimeType } = await processFile(filePath);

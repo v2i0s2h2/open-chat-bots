@@ -1,7 +1,7 @@
 import { Response } from "express";
 import sharp from "sharp";
 import { ExtendedRequest } from "../types";
-const { placeholderResponse } = require("./placeholder");
+import { success } from "./success";
 
 const MAX_SIZE_BYTES = 0.5 * 1024 * 1024;
 
@@ -37,11 +37,14 @@ async function processImage(filePath: string) {
 
 export default async function image(req: ExtendedRequest, res: Response) {
   const client = req.botClient;
-  const placeholder = "Uploading image ...";
+  const placeholder = await client.createTextMessage(
+    false,
+    "Uploading image ..."
+  );
 
-  client.sendTextMessage(false, placeholder);
+  client.sendMessage(placeholder);
 
-  res.status(200).json(placeholderResponse(client, placeholder, false));
+  res.status(200).json(success(placeholder));
 
   const filePath = "./picture.png";
   const { uint8Array, width, height, format } = await processImage(filePath);
