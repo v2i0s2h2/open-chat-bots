@@ -9,6 +9,12 @@ import type { Chat } from "../storageIndex/candid/types";
 import jwt from "jsonwebtoken";
 import { BadRequestError } from "../utils/badrequest";
 
+export type Message = {
+    id: string;
+    content: MessageContent;
+    finalised: boolean;
+};
+
 export type DecodedJwt = {
     exp: number;
     initiator: string;
@@ -193,21 +199,22 @@ export class BotClient extends CandidService {
         return "";
     }
 
-    sendFileMessage(
+    createFileMessage(
         finalised: boolean,
         name: string,
         data: Uint8Array,
         mimeType: string,
         fileSize: number,
         caption?: string,
-    ): Promise<ExecuteBotCommandResponse> {
+    ): Promise<Message> {
         const dataClient = new DataClient(this.#agent, this.config);
         const canisterId = this.#extractCanisterFromChat();
         const uploadContentPromise = dataClient.uploadData([canisterId], mimeType, data);
 
         return uploadContentPromise.then((blobRef) => {
-            return this.executeCommand(
-                {
+            return {
+                id: this.messageId,
+                content: {
                     File: {
                         name,
                         file_size: fileSize,
@@ -222,26 +229,40 @@ export class BotClient extends CandidService {
                     },
                 },
                 finalised,
-            );
+            };
         });
     }
 
-    sendImageMessage(
+    sendFileMessage(
+        finalised: boolean,
+        name: string,
+        data: Uint8Array,
+        mimeType: string,
+        fileSize: number,
+        caption?: string,
+    ): Promise<ExecuteBotCommandResponse> {
+        return this.createFileMessage(finalised, name, data, mimeType, fileSize, caption).then(
+            (msg) => this.sendMessage(msg),
+        );
+    }
+
+    createImageMessage(
         finalised: boolean,
         imageData: Uint8Array,
         mimeType: string,
         width: number,
         height: number,
         caption?: string,
-    ): Promise<ExecuteBotCommandResponse> {
+    ): Promise<Message> {
         const dataClient = new DataClient(this.#agent, this.config);
         const canisterId = this.#extractCanisterFromChat();
         console.log("Upload canister: ", canisterId);
         const uploadContentPromise = dataClient.uploadData([canisterId], mimeType, imageData);
 
         return uploadContentPromise.then((blobRef) => {
-            return this.executeCommand(
-                {
+            return {
+                id: this.messageId,
+                content: {
                     Image: {
                         height,
                         mime_type: mimeType,
@@ -257,41 +278,57 @@ export class BotClient extends CandidService {
                     },
                 },
                 finalised,
-            );
+            };
+        });
+    }
+
+    sendImageMessage(
+        finalised: boolean,
+        imageData: Uint8Array,
+        mimeType: string,
+        width: number,
+        height: number,
+        caption?: string,
+    ): Promise<ExecuteBotCommandResponse> {
+        return this.createImageMessage(finalised, imageData, mimeType, width, height, caption).then(
+            (msg) => this.sendMessage(msg),
+        );
+    }
+
+    createTextMessage(finalised: boolean, text: string): Promise<Message> {
+        return Promise.resolve({
+            id: this.messageId,
+            content: {
+                Text: { text },
+            },
+            finalised,
         });
     }
 
     sendTextMessage(finalised: boolean, text: string): Promise<ExecuteBotCommandResponse> {
-        return this.executeCommand(
-            {
-                Text: { text },
-            },
-            finalised,
-        );
+        return this.createTextMessage(finalised, text).then((msg) => this.sendMessage(msg));
     }
 
-    executeCommand(
-        messageContent: MessageContent,
-        finalised: boolean,
-    ): Promise<ExecuteBotCommandResponse> {
+    sendMessage(message: Message): Promise<ExecuteBotCommandResponse> {
+        return this.#executeAction(message);
+    }
+
+    #executeAction(message: Message): Promise<ExecuteBotCommandResponse> {
         return this.handleResponse(
             this.#botService.execute_bot_action({
                 jwt: this.#encodedJwt,
                 action: {
-                    SendMessage: {
-                        content: messageContent,
-                        finalised,
-                    },
+                    SendMessage: message,
                 },
             }),
             (res) => {
                 if (!("Ok" in res)) {
-                    console.error("Call to execute_command failed with: ", JSON.stringify(res));
+                    console.error("Call to execute_bot_action failed with: ", JSON.stringify(res));
                 }
                 return res;
             },
         ).catch((err) => {
-            console.error("Call to execute_command failed with: ", JSON.stringify(err));
+            console.error("Call to execute_bot_action failed with: ", JSON.stringify(err));
             throw err;
         });
     }

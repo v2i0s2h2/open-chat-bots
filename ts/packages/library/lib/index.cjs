@@ -36789,7 +36789,7 @@ class BadRequestError extends Error {
     }
 }
 
-var _BotClient_instances, _BotClient_botService, _BotClient_agent, _BotClient_identity, _BotClient_decodedJwt, _BotClient_encodedJwt, _BotClient_validateConfig, _BotClient_principalBytesToString, _BotClient_namedArg, _BotClient_decodeJwt, _BotClient_createIdentity, _BotClient_extractCanisterFromChat;
+var _BotClient_instances, _BotClient_botService, _BotClient_agent, _BotClient_identity, _BotClient_decodedJwt, _BotClient_encodedJwt, _BotClient_validateConfig, _BotClient_principalBytesToString, _BotClient_namedArg, _BotClient_decodeJwt, _BotClient_createIdentity, _BotClient_extractCanisterFromChat, _BotClient_executeAction;
 class BotClient extends CandidService {
     constructor(config) {
         super();
@@ -36851,73 +36851,78 @@ class BotClient extends CandidService {
     get botId() {
         return __classPrivateFieldGet$4(this, _BotClient_decodedJwt, "f").bot;
     }
-    sendFileMessage(finalised, name, data, mimeType, fileSize, caption) {
+    createFileMessage(finalised, name, data, mimeType, fileSize, caption) {
         const dataClient = new DataClient(__classPrivateFieldGet$4(this, _BotClient_agent, "f"), this.config);
         const canisterId = __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_extractCanisterFromChat).call(this);
         const uploadContentPromise = dataClient.uploadData([canisterId], mimeType, data);
         return uploadContentPromise.then((blobRef) => {
-            return this.executeCommand({
-                File: {
-                    name,
-                    file_size: fileSize,
-                    mime_type: mimeType,
-                    blob_reference: [
-                        {
-                            blob_id: blobRef.blobId,
-                            canister_id: Principal$1.fromText(blobRef.canisterId),
-                        },
-                    ],
-                    caption: caption ? [caption] : [],
+            return {
+                id: this.messageId,
+                content: {
+                    File: {
+                        name,
+                        file_size: fileSize,
+                        mime_type: mimeType,
+                        blob_reference: [
+                            {
+                                blob_id: blobRef.blobId,
+                                canister_id: Principal$1.fromText(blobRef.canisterId),
+                            },
+                        ],
+                        caption: caption ? [caption] : [],
+                    },
                 },
-            }, finalised);
+                finalised,
+            };
         });
     }
-    sendImageMessage(finalised, imageData, mimeType, width, height, caption) {
+    sendFileMessage(finalised, name, data, mimeType, fileSize, caption) {
+        return this.createFileMessage(finalised, name, data, mimeType, fileSize, caption).then((msg) => this.sendMessage(msg));
+    }
+    createImageMessage(finalised, imageData, mimeType, width, height, caption) {
         const dataClient = new DataClient(__classPrivateFieldGet$4(this, _BotClient_agent, "f"), this.config);
         const canisterId = __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_extractCanisterFromChat).call(this);
         console.log("Upload canister: ", canisterId);
         const uploadContentPromise = dataClient.uploadData([canisterId], mimeType, imageData);
         return uploadContentPromise.then((blobRef) => {
-            return this.executeCommand({
-                Image: {
-                    height,
-                    mime_type: mimeType,
-                    blob_reference: [
-                        {
-                            blob_id: blobRef.blobId,
-                            canister_id: Principal$1.fromText(blobRef.canisterId),
-                        },
-                    ],
-                    thumbnail_data: "",
-                    caption: caption ? [caption] : [],
-                    width,
+            return {
+                id: this.messageId,
+                content: {
+                    Image: {
+                        height,
+                        mime_type: mimeType,
+                        blob_reference: [
+                            {
+                                blob_id: blobRef.blobId,
+                                canister_id: Principal$1.fromText(blobRef.canisterId),
+                            },
+                        ],
+                        thumbnail_data: "",
+                        caption: caption ? [caption] : [],
+                        width,
+                    },
                 },
-            }, finalised);
+                finalised,
+            };
+        });
+    }
+    sendImageMessage(finalised, imageData, mimeType, width, height, caption) {
+        return this.createImageMessage(finalised, imageData, mimeType, width, height, caption).then((msg) => this.sendMessage(msg));
+    }
+    createTextMessage(finalised, text) {
+        return Promise.resolve({
+            id: this.messageId,
+            content: {
+                Text: { text },
+            },
+            finalised,
         });
     }
     sendTextMessage(finalised, text) {
-        return this.executeCommand({
-            Text: { text },
-        }, finalised);
+        return this.createTextMessage(finalised, text).then((msg) => this.sendMessage(msg));
     }
-    executeCommand(messageContent, finalised) {
-        return this.handleResponse(__classPrivateFieldGet$4(this, _BotClient_botService, "f").execute_bot_action({
-            jwt: __classPrivateFieldGet$4(this, _BotClient_encodedJwt, "f"),
-            action: {
-                SendMessage: {
-                    content: messageContent,
-                    finalised,
-                },
-            },
-        }), (res) => {
-            if (!("Ok" in res)) {
-                console.error("Call to execute_command failed with: ", JSON.stringify(res));
-            }
-            return res;
-        }).catch((err) => {
-            console.error("Call to execute_command failed with: ", JSON.stringify(err));
-            throw err;
-        });
+    sendMessage(message) {
+        return __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_executeAction).call(this, message);
     }
 }
 _BotClient_botService = new WeakMap(), _BotClient_agent = new WeakMap(), _BotClient_identity = new WeakMap(), _BotClient_decodedJwt = new WeakMap(), _BotClient_encodedJwt = new WeakMap(), _BotClient_instances = new WeakSet(), _BotClient_validateConfig = function _BotClient_validateConfig(config) {
@@ -36973,6 +36978,21 @@ _BotClient_botService = new WeakMap(), _BotClient_agent = new WeakMap(), _BotCli
         return __classPrivateFieldGet$4(this, _BotClient_decodedJwt, "f").chat.Channel[0].toString();
     }
     return "";
+}, _BotClient_executeAction = function _BotClient_executeAction(message) {
+    return this.handleResponse(__classPrivateFieldGet$4(this, _BotClient_botService, "f").execute_bot_action({
+        jwt: __classPrivateFieldGet$4(this, _BotClient_encodedJwt, "f"),
+        action: {
+            SendMessage: message,
+        },
+    }), (res) => {
+        if (!("Ok" in res)) {
+            console.error("Call to execute_bot_action failed with: ", JSON.stringify(res));
+        }
+        return res;
+    }).catch((err) => {
+        console.error("Call to execute_bot_action failed with: ", JSON.stringify(err));
+        throw err;
+    });
 };
 
 exports.BadRequestError = BadRequestError;

@@ -1,8 +1,8 @@
 import { Response } from "express";
 import { getSpotifyAccessToken, searchSpotifySongs } from "./spotify";
-import { placeholderResponse } from "./placeholder";
 import { argumentsInvalid } from "@open-ic/openchat-botclient-ts";
 import { ExtendedRequest } from "../types";
+import { success } from "./success";
 
 export default async function (req: ExtendedRequest, res: Response) {
   const client = req.botClient;
@@ -10,15 +10,18 @@ export default async function (req: ExtendedRequest, res: Response) {
   if (song === undefined) {
     res.status(400).send(argumentsInvalid());
   } else {
-    const placeholder = "Searching Spotify ...";
+    const placeholder = await client.createTextMessage(
+      false,
+      "Searching Spotify ..."
+    );
 
     client
-      .sendTextMessage(false, placeholder)
+      .sendMessage(placeholder)
       .catch((err: unknown) =>
         console.error("sendTextMessage failed with: ", err)
       );
 
-    res.status(200).json(placeholderResponse(client, placeholder, false));
+    res.status(200).json(success(placeholder));
 
     const token = await getSpotifyAccessToken();
     const item = await searchSpotifySongs(token, song);
@@ -26,8 +29,6 @@ export default async function (req: ExtendedRequest, res: Response) {
 
     client
       .sendTextMessage(true, url)
-      .catch((err: unknown) =>
-        console.error("sendTextMessage failed with: ", err)
-      );
+      .catch((err: unknown) => console.error("sendMessage failed with: ", err));
   }
 }
