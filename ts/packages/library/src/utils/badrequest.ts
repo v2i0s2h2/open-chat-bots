@@ -3,6 +3,7 @@ export type BadRequest =
     | "AccessTokenInvalid"
     | "AccessTokenExpired"
     | "CommandNotFound"
+    | "TooManyRequests"
     | "ArgsInvalid";
 
 export function argumentsInvalid(): BadRequest {
@@ -23,6 +24,10 @@ export function accessTokenExpired(): BadRequest {
 
 export function commandNotFound(): BadRequest {
     return "CommandNotFound";
+}
+
+export function tooManyRequests(): BadRequest {
+    return "TooManyRequests";
 }
 
 export class BadRequestError extends Error {

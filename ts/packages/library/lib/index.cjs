@@ -36783,6 +36783,9 @@ function accessTokenExpired() {
 function commandNotFound() {
     return "CommandNotFound";
 }
+function tooManyRequests() {
+    return "TooManyRequests";
+}
 class BadRequestError extends Error {
     constructor(message) {
         super(message);
@@ -37002,4 +37005,5 @@ exports.accessTokenInvalid = accessTokenInvalid;
 exports.accessTokenNotFound = accessTokenNotFound;
 exports.argumentsInvalid = argumentsInvalid;
 exports.commandNotFound = commandNotFound;
+exports.tooManyRequests = tooManyRequests;
 //# sourceMappingURL=index.cjs.map
