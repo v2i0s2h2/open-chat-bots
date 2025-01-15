@@ -8,6 +8,15 @@ import cors from "cors";
 import executeCommand from "./handlers/executeCommand";
 import schema from "./handlers/schema";
 import createBotClient from "./middleware/botclient";
+import { rateLimit } from "express-rate-limit";
+
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  limit: 3, // 3 per minute
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  statusCode: 429,
+});
 
 const app = express();
 
@@ -21,6 +30,7 @@ const IC_HOST = process.env.IC_HOST!;
 const STORAGE_INDEX_CANISTER = process.env.STORAGE_INDEX_CANISTER!;
 
 app.use(cors());
+app.use(limiter);
 app.use(express.text());
 app.post(
   "/execute_command",

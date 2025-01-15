@@ -36781,6 +36781,9 @@ function accessTokenExpired() {
 function commandNotFound() {
     return "CommandNotFound";
 }
+function tooManyRequests() {
+    return "TooManyRequests";
+}
 class BadRequestError extends Error {
     constructor(message) {
         super(message);
@@ -36993,5 +36996,5 @@ _BotClient_botService = new WeakMap(), _BotClient_agent = new WeakMap(), _BotCli
     });
 };
 
-export { BadRequestError, BotClient, accessTokenExpired, accessTokenInvalid, accessTokenNotFound, argumentsInvalid, commandNotFound };
+export { BadRequestError, BotClient, accessTokenExpired, accessTokenInvalid, accessTokenNotFound, argumentsInvalid, commandNotFound, tooManyRequests };
 //# sourceMappingURL=index.mjs.map

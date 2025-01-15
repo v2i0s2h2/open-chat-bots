@@ -13,6 +13,7 @@ import album from "./album";
 import song from "./song";
 import image from "./image";
 import file from "./file";
+import news from "./news";
 import { ExtendedRequest } from "../types";
 
 function hasBotClient(req: Request): req is ExtendedRequest {
@@ -30,6 +31,8 @@ export default function executeCommand(req: Request, res: Response) {
   switch (client.commandName) {
     case "file":
       return file(req, res);
+    case "news":
+      return news(req, res);
     case "image":
       return image(req, res);
     case "song":
