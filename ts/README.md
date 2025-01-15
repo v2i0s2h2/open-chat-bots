@@ -54,11 +54,17 @@ To obtain this principal, you can generate a pem file as follows:
 openssl ecparam -genkey -name secp256k1 -out private_key.pem
 ```
 
-Note that it is very important that you do not leak the contents of that key. Do not commit it to source control etc. One good option is to pass the contents of the private key into your bot using an environment variable.
+Note that it is _very important_ that you do not leak the contents of that key. Do not commit it to source control etc. One good option is to pass the contents of the private key into your bot using an environment variable.
 
 This private key will be passed into the BotClient and used (internally) to create an Identity (from which we can obtain a principal).
 
-When you _use_ your bot locally, it will print out the principal it has generated to the console and you can use this as the principal string that you should use when registering your bot with OpenChat.
+You will need to know the principal represented by the pem file you generated in order to register your bot. To find out what this principal will be you can use [this script](./packages/library/scripts/report_principal.js) as follows:
+
+```
+node ./scripts/report_principal.js <path-to-pem-file>
+```
+
+This will print the correct principal to the console.
 
 ### OpenChatPublicKey
 
