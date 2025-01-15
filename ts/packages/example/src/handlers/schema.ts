@@ -12,6 +12,15 @@ export default function schema(_: Request, res: Response) {
       "This is a demonstration bot which runs various commands against the Spotify API.",
     commands: [
       {
+        name: "news",
+        description: "Show a list of the current news headlines",
+        permissions: {
+          ...emptyPermissions,
+          message: ["Text"],
+        },
+        params: [],
+      },
+      {
         name: "image",
         description: "Post an image message",
         permissions: {
