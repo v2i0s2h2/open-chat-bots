@@ -11,7 +11,7 @@ if (!pemFilePath) {
 
 try {
     const pemContent = fs.readFileSync(path.resolve(pemFilePath), "utf8");
-    const principal = extractPrincipal(pemContent); // Implement this function
+    const principal = extractPrincipal(pemContent);
     console.log("Principal:", principal);
 } catch (error) {
     console.error("Error:", error.message);
