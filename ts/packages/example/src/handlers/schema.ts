@@ -14,6 +14,7 @@ export default function schema(_: Request, res: Response) {
       {
         name: "news",
         description: "Show a list of the current news headlines",
+        placeholder: "Searching for the headlines ...",
         permissions: {
           ...emptyPermissions,
           message: ["Text"],
