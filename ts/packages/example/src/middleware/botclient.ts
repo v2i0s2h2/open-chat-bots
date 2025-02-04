@@ -8,13 +8,12 @@ import {
   BadRequestError,
   BotClientFactory,
 } from "@open-ic/openchat-botclient-ts";
-import { WithApiKeyChatClient, WithCommandChatClient } from "../types";
+import { WithBotClient } from "../types";
 
 export function createCommandChatClient(factory: BotClientFactory) {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
-      (req as WithCommandChatClient).botClient =
-        factory.createCommandChatClient(req.body);
+      (req as WithBotClient).botClient = factory.createClientFromJwt(req.body);
       console.log("Bot client created");
       next();
     } catch (err: any) {
@@ -29,14 +28,14 @@ export function createCommandChatClient(factory: BotClientFactory) {
 }
 
 export function createApiChatClient(factory: BotClientFactory) {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     try {
       const apiKey = req.headers["x-api-key"];
       if (typeof apiKey !== "string") {
         res.status(400).send("Request header x-api-key not found");
       } else {
-        (req as WithApiKeyChatClient).botClient =
-          await factory.createApiKeyChatClient(apiKey);
+        (req as WithBotClient).botClient =
+          factory.createClientFromApiKey(apiKey);
         console.log("Bot client created");
         next();
       }

@@ -35616,6 +35616,12 @@ function requireJsonwebtoken () {
 var jsonwebtokenExports = requireJsonwebtoken();
 var jwt = /*@__PURE__*/getDefaultExportFromCjs(jsonwebtokenExports);
 
+let BadRequestError$1 = class BadRequestError extends Error {
+    constructor(message) {
+        super(message);
+    }
+};
+
 class HttpError extends Error {
     constructor(code, error) {
         super(error.message);
@@ -35697,12 +35703,7 @@ class CandidService {
 }
 
 const idlFactory$2 = ({ IDL }) => {
-  const AccessTokenArgs = IDL.Variant({ 'BotActionByApiKey' : IDL.Text });
-  const AccessTokenResponse = IDL.Variant({
-    'NotAuthorized' : IDL.Null,
-    'Success' : IDL.Text,
-    'InternalError' : IDL.Text,
-  });
+  const ChannelId = IDL.Nat32;
   const GiphyImageVariant = IDL.Record({
     'url' : IDL.Text,
     'height' : IDL.Nat32,
@@ -35784,80 +35785,62 @@ const idlFactory$2 = ({ IDL }) => {
     'Audio' : AudioContent,
     'Video' : VideoContent,
   });
-  const BotAction = IDL.Variant({
-    'SendMessage' : IDL.Record({
-      'content' : MessageContent,
-      'finalised' : IDL.Bool,
-    }),
+  const AuthToken = IDL.Variant({ 'Jwt' : IDL.Text, 'ApiKey' : IDL.Text });
+  const MessageId = IDL.Nat64;
+  const BotSendMessageArgs = IDL.Record({
+    'channel_id' : IDL.Opt(ChannelId),
+    'content' : MessageContent,
+    'auth_token' : AuthToken,
+    'block_level_markdown' : IDL.Bool,
+    'finalised' : IDL.Bool,
+    'message_id' : IDL.Opt(MessageId),
   });
-  const ExecuteBotCommandArgs = IDL.Record({
-    'jwt' : IDL.Text,
-    'action' : BotAction,
+  const EventIndex = IDL.Nat32;
+  const MessageIndex = IDL.Nat32;
+  const SuccessResult = IDL.Record({
+    'timestamp' : TimestampMillis,
+    'message_id' : MessageId,
+    'event_index' : EventIndex,
+    'expires_at' : IDL.Opt(TimestampMillis),
+    'message_index' : MessageIndex,
   });
-  const ExecuteBotCommandResponse = IDL.Variant({
-    'Ok' : IDL.Null,
-    'Err' : IDL.Variant({
-      'Invalid' : IDL.Text,
-      'CanisterError' : IDL.Variant({
-        'NotAuthorized' : IDL.Null,
-        'Other' : IDL.Text,
-        'Frozen' : IDL.Null,
-      }),
-      'C2CError' : IDL.Tuple(IDL.Nat32, IDL.Text),
-    }),
+  const BotSendMessageResponse = IDL.Variant({
+    'ThreadNotFound' : IDL.Null,
+    'NotAuthorized' : IDL.Null,
+    'Success' : SuccessResult,
+    'InvalidRequest' : IDL.Text,
+    'MessageAlreadyFinalised' : IDL.Null,
+    'C2CError' : IDL.Tuple(IDL.Int32, IDL.Text),
+    'Frozen' : IDL.Null,
   });
   return IDL.Service({
-    'access_token_v2' : IDL.Func(
-        [AccessTokenArgs],
-        [AccessTokenResponse],
-        ['query'],
-      ),
-    'execute_bot_action' : IDL.Func(
-        [ExecuteBotCommandArgs],
-        [ExecuteBotCommandResponse],
+    'bot_send_message' : IDL.Func(
+        [BotSendMessageArgs],
+        [BotSendMessageResponse],
         [],
       ),
   });
 };
 
-function argumentsInvalid() {
-    return "ArgsInvalid";
-}
-function accessTokenNotFound() {
-    return "AccessTokenNotFound";
-}
-function accessTokenInvalid() {
-    return "AccessTokenInvalid";
-}
-function accessTokenExpired() {
-    return "AccessTokenExpired";
-}
-function commandNotFound() {
-    return "CommandNotFound";
-}
-function tooManyRequests() {
-    return "TooManyRequests";
-}
-class BadRequestError extends Error {
-    constructor(message) {
-        super(message);
-    }
-}
-
-var _BotGatewayClient_botService;
+var _BotGatewayClient_instances, _BotGatewayClient_botService, _BotGatewayClient_mapAuthToken;
 class BotGatewayClient extends CandidService {
     constructor(canisterId, agent, env) {
         super();
+        _BotGatewayClient_instances.add(this);
         this.env = env;
         _BotGatewayClient_botService.set(this, undefined);
         __classPrivateFieldSet$4(this, _BotGatewayClient_botService, CandidService.createServiceClient(idlFactory$2, canisterId, env.icHost, agent), "f");
     }
-    executeAction(action, jwt) {
-        return CandidService.handleResponse(__classPrivateFieldGet$4(this, _BotGatewayClient_botService, "f").execute_bot_action({
-            jwt,
-            action: action,
+    sendMessage(message, auth) {
+        return CandidService.handleResponse(__classPrivateFieldGet$4(this, _BotGatewayClient_botService, "f").bot_send_message({
+            channel_id: [],
+            message_id: [],
+            content: message.content,
+            finalised: message.finalised,
+            block_level_markdown: message.blockLevelMarkdown ?? false,
+            auth_token: __classPrivateFieldGet$4(this, _BotGatewayClient_instances, "m", _BotGatewayClient_mapAuthToken).call(this, auth),
         }), (res) => {
-            if (!("Ok" in res)) {
+            if (!("Success" in res)) {
                 console.error("Call to execute_bot_action failed with: ", JSON.stringify(res));
             }
             return res;
@@ -35866,66 +35849,17 @@ class BotGatewayClient extends CandidService {
             throw err;
         });
     }
-    getAuthToken(apiKey) {
-        return CandidService.handleResponse(__classPrivateFieldGet$4(this, _BotGatewayClient_botService, "f").access_token_v2({
-            BotActionByApiKey: apiKey,
-        }), (res) => {
-            if ("Success" in res) {
-                return res.Success;
-            }
-            console.error("Unable to obtain an auth jwt: ", res);
-            throw accessTokenInvalid();
-        }).catch((err) => {
-            console.error("Call to access_token_v2 failed with: ", JSON.stringify(err));
-            throw err;
-        });
-    }
 }
-_BotGatewayClient_botService = new WeakMap();
-
-var _BotClientBase_instances, _BotClientBase_encodedJwt, _BotClientBase_botService, _BotClientBase_decodeJwt;
-class BotClientBase extends CandidService {
-    constructor(agent, env, encodedJwt) {
-        super();
-        _BotClientBase_instances.add(this);
-        this.env = env;
-        _BotClientBase_encodedJwt.set(this, undefined);
-        _BotClientBase_botService.set(this, undefined);
-        __classPrivateFieldSet$4(this, _BotClientBase_encodedJwt, encodedJwt, "f");
-        this.decodedJwt = __classPrivateFieldGet$4(this, _BotClientBase_instances, "m", _BotClientBase_decodeJwt).call(this, encodedJwt);
-        __classPrivateFieldSet$4(this, _BotClientBase_botService, new BotGatewayClient(this.decodedJwt.bot_api_gateway, agent, env), "f");
-    }
-    get scope() {
-        return this.decodedJwt.scope;
-    }
-    isChatScope() {
-        return "Chat" in this.scope;
-    }
-    isCommunityScope() {
-        return "Community" in this.scope;
-    }
-    get botId() {
-        return this.decodedJwt.bot;
-    }
-    executeAction(action) {
-        return __classPrivateFieldGet$4(this, _BotClientBase_botService, "f").executeAction(action, __classPrivateFieldGet$4(this, _BotClientBase_encodedJwt, "f"));
-    }
-}
-_BotClientBase_encodedJwt = new WeakMap(), _BotClientBase_botService = new WeakMap(), _BotClientBase_instances = new WeakSet(), _BotClientBase_decodeJwt = function _BotClientBase_decodeJwt(token) {
-    const publicKey = this.env.openchatPublicKey.replace(/\\n/g, "\n");
-    try {
-        const decoded = jwt.verify(token, publicKey, { algorithms: ["ES256"] });
-        if (typeof decoded !== "string") {
-            return decoded;
-        }
-        else {
-            console.error(`Unable to decode jwt`, token);
-            throw new BadRequestError("AccessTokenInvalid");
-        }
-    }
-    catch (err) {
-        console.error(`Unable to decode jwt`, err, token);
-        throw new BadRequestError("AccessTokenInvalid");
+_BotGatewayClient_botService = new WeakMap(), _BotGatewayClient_instances = new WeakSet(), _BotGatewayClient_mapAuthToken = function _BotGatewayClient_mapAuthToken(auth) {
+    switch (auth.kind) {
+        case "api_key":
+            return {
+                ApiKey: auth.token,
+            };
+        case "jwt":
+            return {
+                Jwt: auth.token,
+            };
     }
 };
 
@@ -36886,195 +36820,117 @@ function hashBytes(bytes) {
     return hash.arrayBuffer();
 }
 
-var _BotApiKeyChatClient_instances, _BotApiKeyChatClient_extractCanisterFromChat;
-// TODO - there is a horrific amount of duplication in here at the moment
-class BotApiKeyChatClient extends BotClientBase {
-    constructor(agent, env, encodedJwt) {
-        super(agent, env, encodedJwt);
-        _BotApiKeyChatClient_instances.add(this);
-        this.agent = agent;
-        if (!this.isChatScope) {
-            throw new BadRequestError("AccessTokenInvalid");
+var _BotClient_instances, _BotClient_botService, _BotClient_auth, _BotClient_decoded, _BotClient_env, _BotClient_agent, _BotClient_botApiGateway_get, _BotClient_decodeApiKey, _BotClient_decodeJwt, _BotClient_extractCanisterFromChat, _BotClient_principalBytesToString, _BotClient_hasCommand, _BotClient_namedArg;
+class BotClient extends CandidService {
+    constructor(agent, env, auth) {
+        super();
+        _BotClient_instances.add(this);
+        _BotClient_botService.set(this, undefined);
+        _BotClient_auth.set(this, undefined);
+        _BotClient_decoded.set(this, undefined);
+        _BotClient_env.set(this, undefined);
+        _BotClient_agent.set(this, undefined);
+        __classPrivateFieldSet$4(this, _BotClient_auth, auth, "f");
+        __classPrivateFieldSet$4(this, _BotClient_env, env, "f");
+        __classPrivateFieldSet$4(this, _BotClient_agent, agent, "f");
+        switch (__classPrivateFieldGet$4(this, _BotClient_auth, "f").kind) {
+            case "api_key":
+                __classPrivateFieldSet$4(this, _BotClient_decoded, __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_decodeApiKey).call(this, __classPrivateFieldGet$4(this, _BotClient_auth, "f").token), "f");
+                break;
+            case "jwt":
+                __classPrivateFieldSet$4(this, _BotClient_decoded, __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_decodeJwt).call(this, __classPrivateFieldGet$4(this, _BotClient_auth, "f").token), "f");
+                break;
         }
+        __classPrivateFieldSet$4(this, _BotClient_botService, new BotGatewayClient(__classPrivateFieldGet$4(this, _BotClient_instances, "a", _BotClient_botApiGateway_get), agent, env), "f");
     }
-    createTextMessage(finalised, text) {
-        return Promise.resolve({
-            id: this.messageId,
-            content: {
-                Text: { text },
-            },
-            finalised,
-        });
-    }
-    get scope() {
-        return super.scope;
-    }
-    get messageId() {
-        return this.scope.Chat.message_id;
-    }
-    get threadRootMessageId() {
-        return this.scope.Chat.thread_root_message_index;
-    }
-    get chatId() {
-        return this.scope.Chat.chat;
-    }
-    sendTextMessage(finalised, text) {
-        return this.createTextMessage(finalised, text).then((msg) => this.sendMessage(msg));
+    get command() {
+        if (__classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_hasCommand).call(this, __classPrivateFieldGet$4(this, _BotClient_decoded, "f"))) {
+            return __classPrivateFieldGet$4(this, _BotClient_decoded, "f").command;
+        }
     }
     sendMessage(message) {
-        return this.executeAction({
-            SendMessage: message,
-        });
-    }
-    createImageMessage(finalised, imageData, mimeType, width, height, caption) {
-        const dataClient = new DataClient(this.agent, this.env);
-        const canisterId = __classPrivateFieldGet$4(this, _BotApiKeyChatClient_instances, "m", _BotApiKeyChatClient_extractCanisterFromChat).call(this);
-        console.log("Upload canister: ", canisterId);
-        const uploadContentPromise = dataClient.uploadData([canisterId], mimeType, imageData);
-        return uploadContentPromise.then((blobRef) => {
-            return {
-                id: this.messageId,
-                content: {
-                    Image: {
-                        height,
-                        mime_type: mimeType,
-                        blob_reference: [
-                            {
-                                blob_id: blobRef.blobId,
-                                canister_id: Principal$1.fromText(blobRef.canisterId),
-                            },
-                        ],
-                        thumbnail_data: "",
-                        caption: caption ? [caption] : [],
-                        width,
-                    },
-                },
-                finalised,
-            };
-        });
-    }
-    sendImageMessage(finalised, imageData, mimeType, width, height, caption) {
-        return this.createImageMessage(finalised, imageData, mimeType, width, height, caption).then((msg) => this.sendMessage(msg));
-    }
-    createFileMessage(finalised, name, data, mimeType, fileSize, caption) {
-        const dataClient = new DataClient(this.agent, this.env);
-        const canisterId = __classPrivateFieldGet$4(this, _BotApiKeyChatClient_instances, "m", _BotApiKeyChatClient_extractCanisterFromChat).call(this);
-        const uploadContentPromise = dataClient.uploadData([canisterId], mimeType, data);
-        return uploadContentPromise.then((blobRef) => {
-            return {
-                id: this.messageId,
-                content: {
-                    File: {
-                        name,
-                        file_size: fileSize,
-                        mime_type: mimeType,
-                        blob_reference: [
-                            {
-                                blob_id: blobRef.blobId,
-                                canister_id: Principal$1.fromText(blobRef.canisterId),
-                            },
-                        ],
-                        caption: caption ? [caption] : [],
-                    },
-                },
-                finalised,
-            };
-        });
-    }
-    sendFileMessage(finalised, name, data, mimeType, fileSize, caption) {
-        return this.createFileMessage(finalised, name, data, mimeType, fileSize, caption).then((msg) => this.sendMessage(msg));
-    }
-}
-_BotApiKeyChatClient_instances = new WeakSet(), _BotApiKeyChatClient_extractCanisterFromChat = function _BotApiKeyChatClient_extractCanisterFromChat() {
-    if ("Group" in this.scope.Chat.chat) {
-        return this.scope.Chat.chat.Group.toString();
-    }
-    else if ("Channel" in this.scope.Chat.chat) {
-        return this.scope.Chat.chat.Channel[0].toString();
-    }
-    return "";
-};
-
-class BotApiKeyCommunityClient extends BotClientBase {
-    constructor(agent, env, encodedJwt) {
-        super(agent, env, encodedJwt);
-    }
-}
-
-var _BotCommandChatClient_instances, _BotCommandChatClient_extractCanisterFromChat, _BotCommandChatClient_namedArg, _BotCommandChatClient_principalBytesToString;
-class BotCommandChatClient extends BotClientBase {
-    constructor(agent, env, encodedJwt) {
-        super(agent, env, encodedJwt);
-        _BotCommandChatClient_instances.add(this);
-        this.agent = agent;
-        if (!this.isChatScope) {
-            throw new BadRequestError("AccessTokenInvalid");
-        }
-    }
-    createTextMessage(finalised, text) {
-        return Promise.resolve({
-            id: this.messageId,
-            content: {
-                Text: { text },
-            },
-            finalised,
-        });
+        return __classPrivateFieldGet$4(this, _BotClient_botService, "f").sendMessage(message, __classPrivateFieldGet$4(this, _BotClient_auth, "f"));
     }
     get scope() {
-        return super.scope;
+        return __classPrivateFieldGet$4(this, _BotClient_decoded, "f").scope;
+    }
+    get chatScope() {
+        if (isChatScope(this.scope)) {
+            return this.scope;
+        }
+    }
+    get communityScope() {
+        if (isCommunityScope(this.scope)) {
+            return this.scope;
+        }
     }
     get messageId() {
-        return this.scope.Chat.message_id;
-    }
-    get threadRootMessageId() {
-        return this.scope.Chat.thread_root_message_index;
-    }
-    get chatId() {
-        return this.scope.Chat.chat;
+        if (isChatScope(this.scope) && this.scope.Chat.message_id !== undefined) {
+            return BigInt(this.scope.Chat.message_id);
+        }
     }
     stringArg(name) {
-        const arg = __classPrivateFieldGet$4(this, _BotCommandChatClient_instances, "m", _BotCommandChatClient_namedArg).call(this, name);
+        const arg = __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_namedArg).call(this, name);
         return arg !== undefined && "String" in arg.value ? arg.value.String : undefined;
     }
     booleanArg(name) {
-        const arg = __classPrivateFieldGet$4(this, _BotCommandChatClient_instances, "m", _BotCommandChatClient_namedArg).call(this, name);
+        const arg = __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_namedArg).call(this, name);
         return arg !== undefined && "Boolean" in arg.value ? arg.value.Boolean : undefined;
     }
     numberArg(name) {
-        const arg = __classPrivateFieldGet$4(this, _BotCommandChatClient_instances, "m", _BotCommandChatClient_namedArg).call(this, name);
+        const arg = __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_namedArg).call(this, name);
         return arg !== undefined && "Number" in arg.value ? arg.value.Number : undefined;
     }
     userArg(name) {
-        const arg = __classPrivateFieldGet$4(this, _BotCommandChatClient_instances, "m", _BotCommandChatClient_namedArg).call(this, name);
+        const arg = __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_namedArg).call(this, name);
         return arg !== undefined && "User" in arg.value
-            ? __classPrivateFieldGet$4(this, _BotCommandChatClient_instances, "m", _BotCommandChatClient_principalBytesToString).call(this, arg.value.User)
+            ? __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_principalBytesToString).call(this, arg.value.User)
             : undefined;
     }
+    get threadRootMessageId() {
+        return this.chatScope?.Chat?.thread_root_message_index;
+    }
+    get chatId() {
+        return this.chatScope?.Chat?.chat;
+    }
+    get botId() {
+        switch (__classPrivateFieldGet$4(this, _BotClient_decoded, "f").kind) {
+            case "api_key":
+                return __classPrivateFieldGet$4(this, _BotClient_decoded, "f").bot_id;
+            case "jwt":
+                return __classPrivateFieldGet$4(this, _BotClient_decoded, "f").bot;
+        }
+    }
     get commandArgs() {
-        return this.decodedJwt.command.args;
+        return this.command?.args ?? [];
     }
     get commandName() {
-        return this.decodedJwt.command.name;
+        return this.command?.name;
     }
     get initiator() {
-        return this.decodedJwt.command.initiator;
+        return this.command?.initiator;
     }
-    sendTextMessage(finalised, text) {
-        return this.createTextMessage(finalised, text).then((msg) => this.sendMessage(msg));
+    sendTextMessage(finalised, text, blockLevelMarkdown) {
+        return this.createTextMessage(finalised, text, blockLevelMarkdown).then((msg) => this.sendMessage(msg));
     }
-    sendMessage(message) {
-        return this.executeAction({
-            SendMessage: message,
+    createTextMessage(finalised, text, blockLevelMarkdown = false) {
+        return Promise.resolve({
+            id: this.messageId ?? 0n,
+            content: {
+                Text: { text },
+            },
+            finalised,
+            blockLevelMarkdown,
         });
     }
     createImageMessage(finalised, imageData, mimeType, width, height, caption) {
-        const dataClient = new DataClient(this.agent, this.env);
-        const canisterId = __classPrivateFieldGet$4(this, _BotCommandChatClient_instances, "m", _BotCommandChatClient_extractCanisterFromChat).call(this);
+        const dataClient = new DataClient(__classPrivateFieldGet$4(this, _BotClient_agent, "f"), __classPrivateFieldGet$4(this, _BotClient_env, "f"));
+        const canisterId = __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_extractCanisterFromChat).call(this);
         console.log("Upload canister: ", canisterId);
         const uploadContentPromise = dataClient.uploadData([canisterId], mimeType, imageData);
         return uploadContentPromise.then((blobRef) => {
             return {
-                id: this.messageId,
+                id: this.messageId ?? 0n,
                 content: {
                     Image: {
                         height,
@@ -37098,12 +36954,12 @@ class BotCommandChatClient extends BotClientBase {
         return this.createImageMessage(finalised, imageData, mimeType, width, height, caption).then((msg) => this.sendMessage(msg));
     }
     createFileMessage(finalised, name, data, mimeType, fileSize, caption) {
-        const dataClient = new DataClient(this.agent, this.env);
-        const canisterId = __classPrivateFieldGet$4(this, _BotCommandChatClient_instances, "m", _BotCommandChatClient_extractCanisterFromChat).call(this);
+        const dataClient = new DataClient(__classPrivateFieldGet$4(this, _BotClient_agent, "f"), __classPrivateFieldGet$4(this, _BotClient_env, "f"));
+        const canisterId = __classPrivateFieldGet$4(this, _BotClient_instances, "m", _BotClient_extractCanisterFromChat).call(this);
         const uploadContentPromise = dataClient.uploadData([canisterId], mimeType, data);
         return uploadContentPromise.then((blobRef) => {
             return {
-                id: this.messageId,
+                id: this.messageId ?? 0n,
                 content: {
                     File: {
                         name,
@@ -37126,21 +36982,59 @@ class BotCommandChatClient extends BotClientBase {
         return this.createFileMessage(finalised, name, data, mimeType, fileSize, caption).then((msg) => this.sendMessage(msg));
     }
 }
-_BotCommandChatClient_instances = new WeakSet(), _BotCommandChatClient_extractCanisterFromChat = function _BotCommandChatClient_extractCanisterFromChat() {
-    if ("Group" in this.scope.Chat.chat) {
-        return this.scope.Chat.chat.Group.toString();
+_BotClient_botService = new WeakMap(), _BotClient_auth = new WeakMap(), _BotClient_decoded = new WeakMap(), _BotClient_env = new WeakMap(), _BotClient_agent = new WeakMap(), _BotClient_instances = new WeakSet(), _BotClient_botApiGateway_get = function _BotClient_botApiGateway_get() {
+    switch (__classPrivateFieldGet$4(this, _BotClient_decoded, "f").kind) {
+        case "api_key":
+            return __classPrivateFieldGet$4(this, _BotClient_decoded, "f").gateway;
+        case "jwt":
+            return __classPrivateFieldGet$4(this, _BotClient_decoded, "f").bot_api_gateway;
     }
-    else if ("Channel" in this.scope.Chat.chat) {
-        return this.scope.Chat.chat.Channel[0].toString();
+}, _BotClient_decodeApiKey = function _BotClient_decodeApiKey(apiKey) {
+    const buffer = Buffer.from(apiKey, "base64");
+    const decoded = buffer.toString("utf-8");
+    const json = JSON.parse(decoded);
+    return { ...json, kind: "api_key" };
+}, _BotClient_decodeJwt = function _BotClient_decodeJwt(token) {
+    const publicKey = __classPrivateFieldGet$4(this, _BotClient_env, "f").openchatPublicKey.replace(/\\n/g, "\n");
+    try {
+        const decoded = jwt.verify(token, publicKey, { algorithms: ["ES256"] });
+        if (typeof decoded !== "string") {
+            return { ...decoded, kind: "jwt" };
+        }
+        else {
+            console.error(`Unable to decode jwt`, token);
+            throw new BadRequestError$1("AccessTokenInvalid");
+        }
+    }
+    catch (err) {
+        console.error(`Unable to decode jwt`, err, token);
+        throw new BadRequestError$1("AccessTokenInvalid");
+    }
+}, _BotClient_extractCanisterFromChat = function _BotClient_extractCanisterFromChat() {
+    if (isChatScope(this.scope)) {
+        if ("Group" in this.scope.Chat.chat) {
+            return this.scope.Chat.chat.Group.toString();
+        }
+        else if ("Channel" in this.scope.Chat.chat) {
+            return this.scope.Chat.chat.Channel[0].toString();
+        }
     }
     return "";
-}, _BotCommandChatClient_namedArg = function _BotCommandChatClient_namedArg(name) {
-    return this.decodedJwt.command.args.find((a) => a.name === name);
-}, _BotCommandChatClient_principalBytesToString = function _BotCommandChatClient_principalBytesToString(bytes) {
+}, _BotClient_principalBytesToString = function _BotClient_principalBytesToString(bytes) {
     return Principal$1.fromUint8Array(bytes).toString();
+}, _BotClient_hasCommand = function _BotClient_hasCommand(decoded) {
+    return decoded.kind === "jwt";
+}, _BotClient_namedArg = function _BotClient_namedArg(name) {
+    return this.command?.args?.find((a) => a.name === name);
 };
+function isChatScope(scope) {
+    return "Chat" in scope;
+}
+function isCommunityScope(scope) {
+    return "Community" in scope;
+}
 
-var _BotClientFactory_instances, _BotClientFactory_agent, _BotClientFactory_validateConfig, _BotClientFactory_getAuthToken;
+var _BotClientFactory_instances, _BotClientFactory_agent, _BotClientFactory_validateConfig;
 function createAgent(env) {
     const identity = createIdentity(env.identityPrivateKey);
     console.log("Principal: ", identity.getPrincipal().toText());
@@ -37160,11 +37054,6 @@ function createIdentity(privateKey) {
         throw err;
     }
 }
-function decodeApiKey(apiKey) {
-    const buffer = Buffer.from(apiKey, "base64");
-    const decoded = buffer.toString("utf-8");
-    return JSON.parse(decoded);
-}
 class BotClientFactory {
     constructor(env) {
         _BotClientFactory_instances.add(this);
@@ -37173,17 +37062,11 @@ class BotClientFactory {
         __classPrivateFieldGet$4(this, _BotClientFactory_instances, "m", _BotClientFactory_validateConfig).call(this, env);
         __classPrivateFieldSet$4(this, _BotClientFactory_agent, createAgent(env), "f");
     }
-    createApiKeyChatClient(apiKey) {
-        return __classPrivateFieldGet$4(this, _BotClientFactory_instances, "m", _BotClientFactory_getAuthToken).call(this, apiKey).then((token) => new BotApiKeyChatClient(__classPrivateFieldGet$4(this, _BotClientFactory_agent, "f"), this.env, token));
+    createClientFromApiKey(apiKey) {
+        return new BotClient(__classPrivateFieldGet$4(this, _BotClientFactory_agent, "f"), this.env, { kind: "api_key", token: apiKey });
     }
-    createApiKeyCommunityClient(apiKey) {
-        return __classPrivateFieldGet$4(this, _BotClientFactory_instances, "m", _BotClientFactory_getAuthToken).call(this, apiKey).then((token) => new BotApiKeyCommunityClient(__classPrivateFieldGet$4(this, _BotClientFactory_agent, "f"), this.env, token));
-    }
-    createCommandChatClient(encodedJwt) {
-        return new BotCommandChatClient(__classPrivateFieldGet$4(this, _BotClientFactory_agent, "f"), this.env, encodedJwt);
-    }
-    createCommandCommunityClient(encodedJwt) {
-        return new BotCommandChatClient(__classPrivateFieldGet$4(this, _BotClientFactory_agent, "f"), this.env, encodedJwt);
+    createClientFromJwt(jwt) {
+        return new BotClient(__classPrivateFieldGet$4(this, _BotClientFactory_agent, "f"), this.env, { kind: "jwt", token: jwt });
     }
 }
 _BotClientFactory_agent = new WeakMap(), _BotClientFactory_instances = new WeakSet(), _BotClientFactory_validateConfig = function _BotClientFactory_validateConfig(env) {
@@ -37199,20 +37082,36 @@ _BotClientFactory_agent = new WeakMap(), _BotClientFactory_instances = new WeakS
     else if (env.openchatPublicKey === undefined) {
         throw new Error("OpenChat public key not provided");
     }
-}, _BotClientFactory_getAuthToken = function _BotClientFactory_getAuthToken(apiKey) {
-    const key = decodeApiKey(apiKey);
-    const botService = new BotGatewayClient(key.gateway, __classPrivateFieldGet$4(this, _BotClientFactory_agent, "f"), this.env);
-    return botService.getAuthToken(apiKey);
 };
 
-class BotCommandCommunityClient extends BotClientBase {
-    constructor(agent, env, encodedJwt) {
-        super(agent, env, encodedJwt);
-        if (!this.isCommunityScope) {
-            throw new BadRequestError("AccessTokenInvalid");
-        }
+function argumentsInvalid() {
+    return "ArgsInvalid";
+}
+function accessTokenNotFound() {
+    return "AccessTokenNotFound";
+}
+function accessTokenInvalid() {
+    return "AccessTokenInvalid";
+}
+function accessTokenExpired() {
+    return "AccessTokenExpired";
+}
+function commandNotFound() {
+    return "CommandNotFound";
+}
+function tooManyRequests() {
+    return "TooManyRequests";
+}
+class BadRequestError extends Error {
+    constructor(message) {
+        super(message);
     }
 }
 
-export { BadRequestError, BotApiKeyChatClient, BotApiKeyCommunityClient, BotClientFactory, BotCommandChatClient, BotCommandCommunityClient, accessTokenExpired, accessTokenInvalid, accessTokenNotFound, argumentsInvalid, commandNotFound, tooManyRequests };
+//@ts-ignore
+BigInt.prototype.toJSON = function () {
+    return this.toString();
+};
+
+export { BadRequestError, BotClient, BotClientFactory, accessTokenExpired, accessTokenInvalid, accessTokenNotFound, argumentsInvalid, commandNotFound, tooManyRequests };
 //# sourceMappingURL=index.mjs.map
