@@ -2,12 +2,13 @@ import { Request, Response } from "express";
 import sharp from "sharp";
 import { WithBotClient } from "../types";
 import path from "path";
+import { Channel } from "@open-ic/openchat-botclient-ts";
 
 function hasBotClient(req: Request): req is WithBotClient {
   return (req as WithBotClient).botClient !== undefined;
 }
 
-const MAX_SIZE_BYTES = 0.5 * 1024 * 1024;
+const MAX_SIZE_BYTES = 0.3 * 1024 * 1024;
 
 async function processImage(filePath: string) {
   try {
@@ -22,6 +23,7 @@ async function processImage(filePath: string) {
       width = Math.round((width ?? 0) * scaleFactor);
       height = Math.round((height ?? 0) * scaleFactor);
       buffer = await image.resize({ width, height }).toBuffer();
+      console.log("Resizing: ", scaleFactor, width, height);
     }
 
     console.log(`Final Dimensions: ${width}x${height}`);
@@ -44,14 +46,16 @@ export default async function createChannel(req: Request, res: Response) {
   const imageData = await processImage(imagePath);
 
   const resp = await client.createChannel(
-    req.body,
-    "This is a test channel created by a bot",
-    { avatar: imageData }
+    new Channel(req.body, "This is a test channel created by a bot")
+      .setAvatar(imageData)
+      .setGroupPermission("changeRoles", "members")
+      .setHistoryVisibleToNewJoiners(false)
   );
-  if ("Success" in resp) {
-    console.log("Successfully created channel");
+
+  if (typeof resp === "object" && "Success" in resp) {
+    console.log("Successfully created channel", resp.Success.channel_id);
     res.sendStatus(200);
   } else {
-    res.send(500).json(resp);
+    res.status(500).json(resp);
   }
 }

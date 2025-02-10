@@ -16,8 +16,8 @@ async function processImage(filePath: string) {
 
     while (buffer.length > MAX_SIZE_BYTES) {
       const scaleFactor = Math.sqrt(MAX_SIZE_BYTES / buffer.length);
-      width = Math.round(width ?? 0 * scaleFactor);
-      height = Math.round(height ?? 0 * scaleFactor);
+      width = Math.round((width ?? 0) * scaleFactor);
+      height = Math.round((height ?? 0) * scaleFactor);
       buffer = await image.resize({ width, height }).toBuffer();
     }
 
@@ -38,10 +38,9 @@ async function processImage(filePath: string) {
 
 export default async function image(req: WithBotClient, res: Response) {
   const client = req.botClient;
-  const placeholder = await client.createTextMessage(
-    false,
-    "Uploading image ..."
-  );
+  const placeholder = (
+    await client.createTextMessage("Uploading image ...")
+  ).setFinalised(false);
 
   client.sendMessage(placeholder);
 
@@ -50,12 +49,10 @@ export default async function image(req: WithBotClient, res: Response) {
   const filePath = path.join(__dirname, "..", "..", "picture.png");
   const { uint8Array, width, height, format } = await processImage(filePath);
 
-  client.sendImageMessage(
-    true,
-    uint8Array,
-    `image/${format}`,
-    width,
-    height,
-    "This is a test image"
-  );
+  client
+    .createImageMessage(uint8Array, `image/${format}`, width, height)
+    .then((imgMsg) =>
+      client.sendMessage(imgMsg.setCaption("This is a test image message"))
+    )
+    .catch((err) => console.log("sendImageMessage failed with: ", err));
 }

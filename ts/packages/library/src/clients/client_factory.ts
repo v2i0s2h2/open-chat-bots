@@ -1,16 +1,25 @@
 import { HttpAgent } from "@dfinity/agent";
 import { Secp256k1KeyIdentity } from "@dfinity/identity-secp256k1";
-import type { BotClientConfig } from "../types";
 import { BotClient } from "./bot_client";
+import type { BotClientConfig } from "../domain";
+
+export function isMainnet(icUrl: string): boolean {
+    return icUrl.includes("icp-api.io");
+}
 
 function createAgent(env: BotClientConfig): HttpAgent {
     const identity = createIdentity(env.identityPrivateKey);
     console.log("Principal: ", identity.getPrincipal().toText());
-    return new HttpAgent({
+    const agent = HttpAgent.createSync({
         identity,
         host: env.icHost,
-        retryTimes: 5,
+        verifyQuerySignatures: false,
     });
+    const fetchRootKey = !isMainnet(env.icHost);
+    if (fetchRootKey) {
+        agent.fetchRootKey().catch((err) => console.error("Error fetching root key", err));
+    }
+    return agent;
 }
 
 function createIdentity(privateKey: string) {

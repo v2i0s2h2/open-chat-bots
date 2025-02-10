@@ -21,8 +21,53 @@ export default function schema(_: Request, res: Response) {
       },
     },
     description:
-      "This is a demonstration bot which runs various commands against the Spotify API.",
+      "This is a demonstration bot which demonstrates a variety of different approaches and techniques that bot developers can use.",
     commands: [
+      {
+        name: "numbers",
+        description: "Handle different types of numbers",
+        permissions: {
+          ...emptyPermissions,
+          message: ["Text"],
+        },
+        params: [
+          {
+            name: "int_one",
+            required: true,
+            description: "First integer argument",
+            placeholder: "Enter an integer",
+            param_type: {
+              IntegerParam: {
+                min_value: -100,
+                max_value: 100,
+                choices: [],
+              },
+            },
+          },
+          {
+            name: "dec_one",
+            required: true,
+            description: "First decimal argument",
+            placeholder: "Enter a decimal",
+            param_type: {
+              DecimalParam: {
+                min_value: -100,
+                max_value: 100,
+                choices: [],
+              },
+            },
+          },
+        ],
+      },
+      {
+        name: "poll",
+        description: "Send a random poll",
+        permissions: {
+          ...emptyPermissions,
+          message: ["Poll"],
+        },
+        params: [],
+      },
       {
         name: "start_ping",
         description: "Begin pinging OpenChat",

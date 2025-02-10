@@ -1,32 +1,36 @@
 import jwt from "jsonwebtoken";
 import { BadRequestError } from "../utils/error_response";
 import { HttpAgent } from "@dfinity/agent";
-import { CandidService } from "../utils/candidService";
+import { BotGatewayClient } from "../services/bot_gateway/bot_gateway_client";
 import {
-    defaultChannelOptions,
-    type AuthToken,
-    type BotActionChatScope,
-    type BotActionCommunityScope,
+    LocalUserIndexBotSendMessageResponse as BotSendMessageResponse,
+    LocalUserIndexBotCreateChannelResponse as BotCreateChannelResponse,
+    LocalUserIndexBotDeleteChannelResponse as BotDeleteChannelResponse,
     type BotActionScope,
+    type Chat,
+    BotCommandArg,
+    BotCommand,
+} from "../typebox/typebox";
+import { DataClient } from "../services/data/data.client";
+import { Principal } from "@dfinity/principal";
+import {
+    FileMessage,
+    ImageMessage,
+    PollMessage,
+    TextMessage,
+    type AuthToken,
     type BotClientConfig,
-    type BotCommand,
-    type BotCommandArg,
-    type ChannelOptions,
     type DecodedApiKey,
     type DecodedJwt,
     type DecodedPayload,
     type Message,
-} from "../types";
-import { BotGatewayClient } from "../services/bot_gateway/bot_gateway_client";
-import type {
-    BotCreateChannelResponse,
-    BotSendMessageResponse,
-} from "../services/bot_gateway/candid/types";
-import type { Chat } from "../services/storageIndex/candid/types";
-import { DataClient } from "../services/data/data.client";
-import { Principal } from "@dfinity/principal";
+    type BotActionChatScope,
+    type BotActionCommunityScope,
+} from "../domain";
+import type { Channel } from "../domain/channel";
+import { apiOptional } from "../mapping";
 
-export class BotClient extends CandidService {
+export class BotClient {
     #botService: BotGatewayClient;
     #auth: AuthToken;
     #decoded: DecodedPayload;
@@ -34,7 +38,6 @@ export class BotClient extends CandidService {
     #agent: HttpAgent;
 
     constructor(agent: HttpAgent, env: BotClientConfig, auth: AuthToken) {
-        super();
         this.#auth = auth;
         this.#env = env;
         this.#agent = agent;
@@ -114,17 +117,12 @@ export class BotClient extends CandidService {
         return this.#botService.sendMessage(message, this.#auth);
     }
 
-    public createChannel(
-        name: string,
-        description: string,
-        options?: Partial<ChannelOptions>,
-    ): Promise<BotCreateChannelResponse> {
-        return this.#botService.createChannel(
-            name,
-            description,
-            { ...defaultChannelOptions, ...options },
-            this.#auth,
-        );
+    public createChannel(channel: Channel): Promise<BotCreateChannelResponse> {
+        return this.#botService.createChannel(channel, this.#auth);
+    }
+
+    public deleteChannel(channelId: bigint): Promise<BotDeleteChannelResponse> {
+        return this.#botService.deleteChannel(channelId, this.#auth);
     }
 
     public get scope(): BotActionScope {
@@ -159,9 +157,14 @@ export class BotClient extends CandidService {
         return arg !== undefined && "Boolean" in arg.value ? arg.value.Boolean : undefined;
     }
 
-    public numberArg(name: string): number | undefined {
+    public decimalArg(name: string): number | undefined {
         const arg = this.#namedArg(name);
-        return arg !== undefined && "Number" in arg.value ? arg.value.Number : undefined;
+        return arg !== undefined && "Decimal" in arg.value ? arg.value.Decimal : undefined;
+    }
+
+    public integerArg(name: string): bigint | undefined {
+        const arg = this.#namedArg(name);
+        return arg !== undefined && "Integer" in arg.value ? arg.value.Integer : undefined;
     }
 
     public userArg(name: string): string | undefined {
@@ -172,7 +175,7 @@ export class BotClient extends CandidService {
     }
 
     public get threadRootMessageId(): number | undefined | null {
-        return this.chatScope?.Chat?.thread_root_message_index;
+        return this.chatScope?.Chat?.thread;
     }
 
     public get chatId(): Chat | undefined {
@@ -197,128 +200,57 @@ export class BotClient extends CandidService {
     }
 
     public get initiator(): string | undefined {
-        return this.command?.initiator;
+        return apiOptional(this.command?.initiator, this.#principalBytesToString);
     }
 
-    sendTextMessage(
-        finalised: boolean,
-        text: string,
-        blockLevelMarkdown?: boolean,
-    ): Promise<BotSendMessageResponse> {
-        return this.createTextMessage(finalised, text, blockLevelMarkdown).then((msg) =>
-            this.sendMessage(msg),
+    createTextMessage(text: string): Promise<TextMessage> {
+        return Promise.resolve(new TextMessage(text).setContextMessageId(this.messageId));
+    }
+
+    createPollMessage(question: string, answers: string[]): Promise<PollMessage> {
+        return Promise.resolve(
+            new PollMessage(question, answers).setContextMessageId(this.messageId),
         );
-    }
-
-    createTextMessage(
-        finalised: boolean,
-        text: string,
-        blockLevelMarkdown: boolean = false,
-    ): Promise<Message> {
-        return Promise.resolve({
-            id: this.messageId ?? 0n,
-            content: {
-                Text: { text },
-            },
-            finalised,
-            blockLevelMarkdown,
-        });
     }
 
     createImageMessage(
-        finalised: boolean,
         imageData: Uint8Array,
         mimeType: string,
         width: number,
         height: number,
-        caption?: string,
-    ): Promise<Message> {
+    ): Promise<ImageMessage> {
         const dataClient = new DataClient(this.#agent, this.#env);
         const canisterId = this.#extractCanisterFromChat();
-        console.log("Upload canister: ", canisterId);
         const uploadContentPromise = dataClient.uploadData([canisterId], mimeType, imageData);
 
-        return uploadContentPromise.then((blobRef) => {
-            return {
-                id: this.messageId ?? 0n,
-                content: {
-                    Image: {
-                        height,
-                        mime_type: mimeType,
-                        blob_reference: [
-                            {
-                                blob_id: blobRef.blobId,
-                                canister_id: Principal.fromText(blobRef.canisterId),
-                            },
-                        ],
-                        thumbnail_data: "",
-                        caption: caption ? [caption] : [],
-                        width,
-                    },
-                },
-                finalised,
-            };
+        return uploadContentPromise.then((blobReference) => {
+            return new ImageMessage(
+                width,
+                height,
+                mimeType,
+                blobReference,
+            ).setContextMessageId<ImageMessage>(this.messageId);
         });
     }
 
-    sendImageMessage(
-        finalised: boolean,
-        imageData: Uint8Array,
-        mimeType: string,
-        width: number,
-        height: number,
-        caption?: string,
-    ): Promise<BotSendMessageResponse> {
-        return this.createImageMessage(finalised, imageData, mimeType, width, height, caption).then(
-            (msg) => this.sendMessage(msg),
-        );
-    }
-
     createFileMessage(
-        finalised: boolean,
         name: string,
         data: Uint8Array,
         mimeType: string,
         fileSize: number,
-        caption?: string,
-    ): Promise<Message> {
+    ): Promise<FileMessage> {
         const dataClient = new DataClient(this.#agent, this.#env);
         const canisterId = this.#extractCanisterFromChat();
         const uploadContentPromise = dataClient.uploadData([canisterId], mimeType, data);
 
-        return uploadContentPromise.then((blobRef) => {
-            return {
-                id: this.messageId ?? 0n,
-                content: {
-                    File: {
-                        name,
-                        file_size: fileSize,
-                        mime_type: mimeType,
-                        blob_reference: [
-                            {
-                                blob_id: blobRef.blobId,
-                                canister_id: Principal.fromText(blobRef.canisterId),
-                            },
-                        ],
-                        caption: caption ? [caption] : [],
-                    },
-                },
-                finalised,
-            };
+        return uploadContentPromise.then((blobReference) => {
+            return new FileMessage(
+                name,
+                mimeType,
+                fileSize,
+                blobReference,
+            ).setContextMessageId<FileMessage>(this.messageId);
         });
-    }
-
-    sendFileMessage(
-        finalised: boolean,
-        name: string,
-        data: Uint8Array,
-        mimeType: string,
-        fileSize: number,
-        caption?: string,
-    ): Promise<BotSendMessageResponse> {
-        return this.createFileMessage(finalised, name, data, mimeType, fileSize, caption).then(
-            (msg) => this.sendMessage(msg),
-        );
     }
 }
 

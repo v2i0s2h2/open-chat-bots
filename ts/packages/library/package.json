@@ -1,6 +1,6 @@
 {
     "name": "@open-ic/openchat-botclient-ts",
-    "version": "1.0.13",
+    "version": "1.0.18",
     "description": "A client library for OpenChat bots to interact with the OpenChat backend",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
@@ -12,6 +12,12 @@
     },
     "author": "julian.jelfs@gmail.com",
     "license": "ISC",
+    "files": [
+        "lib/",
+        "src/",
+        "package.json",
+        "README.md"
+    ],
     "devDependencies": {
         "@rollup/plugin-commonjs": "^28.0.2",
         "@rollup/plugin-node-resolve": "^16.0.0",
@@ -29,7 +35,9 @@
         "@dfinity/candid": "^2.2.0",
         "@dfinity/identity-secp256k1": "^2.2.0",
         "@dfinity/principal": "^2.2.0",
+        "@sinclair/typebox": "^0.34.16",
         "js-sha3": "^0.9.3",
-        "jsonwebtoken": "^9.0.2"
+        "jsonwebtoken": "^9.0.2",
+        "msgpackr": "^1.11.2"
     }
 }

@@ -1,19 +1,19 @@
 import { Response } from "express";
-import { ping } from "./ping";
 import { success } from "./success";
 import { WithBotClient } from "../types";
 
 export default async function (req: WithBotClient, res: Response) {
   const client = req.botClient;
-  const msg = await client.createTextMessage("Starting to ping ...");
+  const msg = await client.createPollMessage("Do you like OpenChat?", [
+    "Oh yes I certainly do!",
+    "No not at all. Frightful.",
+  ]);
 
   client
     .sendMessage(msg)
     .catch((err: unknown) =>
-      console.error("sendTextMessage failed with: ", err)
+      console.error("sendPollMessage failed with: ", err)
     );
 
   res.status(200).json(success(msg));
-
-  ping.start();
 }
