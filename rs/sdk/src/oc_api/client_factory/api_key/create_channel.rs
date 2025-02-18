@@ -1,12 +1,12 @@
-use super::OpenChatClientForApiKey;
-use crate::actions::ActionArgsBuilder;
-use crate::api::create_channel;
+use super::ClientForApiKey;
+use crate::oc_api::actions::create_channel::*;
+use crate::oc_api::actions::ActionArgsBuilder;
 use crate::types::{AccessGateConfig, CanisterId, Document, GroupPermissions, Milliseconds, Rules};
 use crate::Runtime;
 use std::sync::Arc;
 
 pub struct CreateChannelBuilder<R> {
-    client: OpenChatClientForApiKey<R>,
+    client: ClientForApiKey<R>,
     name: String,
     is_public: bool,
     description: String,
@@ -21,7 +21,7 @@ pub struct CreateChannelBuilder<R> {
 }
 
 impl<R: Runtime> CreateChannelBuilder<R> {
-    pub fn new(client: OpenChatClientForApiKey<R>, name: String, is_public: bool) -> Self {
+    pub fn new(client: ClientForApiKey<R>, name: String, is_public: bool) -> Self {
         CreateChannelBuilder {
             client,
             name,
@@ -91,8 +91,7 @@ impl<R: Runtime> CreateChannelBuilder<R> {
 }
 
 impl<R: Runtime> ActionArgsBuilder<R> for CreateChannelBuilder<R> {
-    type ActionArgs = create_channel::Args;
-    type ActionResponse = create_channel::Response;
+    type Action = CreateChannelAction;
 
     fn runtime(&self) -> Arc<R> {
         self.client.runtime.clone()
@@ -102,12 +101,8 @@ impl<R: Runtime> ActionArgsBuilder<R> for CreateChannelBuilder<R> {
         self.client.context.api_gateway
     }
 
-    fn method_name(&self) -> &str {
-        "bot_create_channel"
-    }
-
-    fn into_args(self) -> create_channel::Args {
-        create_channel::Args {
+    fn into_args(self) -> Args {
+        Args {
             auth_token: self.client.context.token,
             name: self.name,
             is_public: self.is_public,
