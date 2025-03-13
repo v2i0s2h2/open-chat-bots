@@ -6,7 +6,6 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Extension, Router};
-use dotenv::dotenv;
 use oc_bots_sdk::api::command::{CommandHandlerRegistry, CommandResponse};
 use oc_bots_sdk::api::definition::BotDefinition;
 use oc_bots_sdk::oc_api::client_factory::ClientFactory;
@@ -22,16 +21,14 @@ use tracing::info;
 
 mod commands;
 mod config;
-mod errors;
 mod llm_canister_agent;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load .env file if present
-    dotenv().ok();
-
-    // Get config file path from env - if not set, use default
-    let config_file_path = std::env::var("CONFIG_FILE").unwrap_or("./config.toml".to_string());
+    // Get config file path from the args, or if not set, use default
+    let config_file_path = std::env::args()
+        .next()
+        .unwrap_or("./config.toml".to_string());
 
     // Load & parse config
     let config = Config::from_file(&config_file_path)?;
@@ -46,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let oc_client_factory = Arc::new(ClientFactory::new(AgentRuntime::new(
         agent.clone(),
-        tokio::runtime::Runtime::new().unwrap(),
+        tokio::runtime::Runtime::new()?,
     )));
 
     let llm_canister_agent = LlmCanisterAgent::new(agent);
@@ -71,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(Arc::new(app_state));
 
     let socket_addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), config.port);
-    let listener = tokio::net::TcpListener::bind(socket_addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(socket_addr).await?;
 
     info!("LlamaBot ready");
 

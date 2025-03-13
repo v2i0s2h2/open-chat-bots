@@ -4,7 +4,7 @@ This is a guide to get the example bots up and running as a starting point for d
 
 ## Prerequisites
 
-Ensure the `open-chat-labs` and `open-chat` repos are cloned into the same root directory:
+Ensure the `open-chat` and `open-chat-bots` repos are cloned into the same root directory:
 
 ```
 open-chat-labs/
@@ -66,6 +66,8 @@ To deploy the example bots for particular SDKs please follow these links:
 2. If registering a canister bot then for the `Principal` field use the bot canister id from the endpoint URL
 
 3. This registers the bot on OpenChat for testing but it still needs to be installed into a group, community, or as a direct chat
+
+&nbsp;
 
 ![Register bot](./images/register-onchain-bot.png)
 
