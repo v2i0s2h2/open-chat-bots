@@ -1,5 +1,7 @@
 # SDK for building Rust canister bots for OpenChat plus some example bots
 
+## Quick start
+
 In the root of the repo there are scripts to deploy the Rust canister example bots locally.
 
 - [GreetBot](./scripts/deploy_greet_bot.sh)
@@ -14,4 +16,6 @@ In the root of the repo there are scripts to deploy the Rust canister example bo
   ./scripts/deploy_reminder_bot.sh
 ```
 
-SDK docs coming soon...
+## SDK
+
+[Start here](../sdk/README.md)
