@@ -41,10 +41,6 @@ impl<R: Runtime> CommandHandlerRegistry<R> {
         self
     }
 
-    pub fn get(&self, name: &str) -> Option<&dyn CommandHandler<R>> {
-        self.commands.get(name).map(|v| &**v)
-    }
-
     pub fn definitions(&self) -> Vec<BotCommandDefinition> {
         self.commands
             .values()
@@ -103,6 +99,10 @@ impl<R: Runtime> CommandHandlerRegistry<R> {
             Err(error) => CommandResponse::InternalError(InternalError::CommandError(error)),
         }
     }
+
+    fn get(&self, name: &str) -> Option<&dyn CommandHandler<R>> {
+        self.commands.get(name).map(|v| &**v)
+    }
 }
 
 #[async_trait]
@@ -132,16 +132,16 @@ fn check_args_internal(
         return false;
     }
 
-    for p in params.iter() {
-        let Some(arg) = args.iter().find(|a| a.name == p.name) else {
-            if p.required {
+    for param in params.iter() {
+        let Some(arg) = args.iter().find(|a| a.name == param.name) else {
+            if param.required {
                 return false;
             }
 
             continue;
         };
 
-        match &p.param_type {
+        match &param.param_type {
             BotCommandParamType::StringParam(p) => {
                 let Some(value) = arg.value.as_string() else {
                     return false;
