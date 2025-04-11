@@ -1,7 +1,10 @@
+import ActionContext "api/bot/actionContext";
 import CommandContext "api/bot/commandContext";
 import MessageContent "api/common/messageContent";
+import ChatEventsApi "api/oc/chatEvents";
+import ChatDetails "client/chatDetails";
+import ChatEvents "client/chatEvents";
 import SendMessage "client/sendMessage";
-import ActionContext "api/bot/actionContext";
 
 module {
     public class CommandClient(commandContext : CommandContext.CommandContext) {
@@ -9,7 +12,7 @@ module {
 
         let actionContext : ActionContext.ActionContext = CommandContext.toActionContext(context);
 
-        public func sendMessage(content: MessageContent.MessageContentInitial) : SendMessage.Builder {
+        public func sendMessage(content : MessageContent.MessageContentInitial) : SendMessage.Builder {
             SendMessage.Builder(actionContext, content);
         };
 
@@ -17,13 +20,13 @@ module {
             sendMessage(#Text { text = text });
         };
 
-    // pub fn chat_details(&self) -> ChatDetailsBuilder<R, C> {
-    //     ChatDetailsBuilder::new(self)
-    // }
+        public func chatDetails() : ChatDetails.Builder {
+            ChatDetails.Builder(actionContext);
+        };
 
-    // pub fn chat_events(&self, events: EventsSelectionCriteria) -> ChatEventsBuilder<R, C> {
-    //     ChatEventsBuilder::new(self, events)
-    // }
+        public func chatEvents(events: ChatEventsApi.EventsSelectionCriteria) : ChatEvents.Builder {
+            ChatEvents.Builder(actionContext, events)
+        };
     };
 
     public class AutonomousClient(context : ActionContext.ActionContext) {
@@ -35,12 +38,12 @@ module {
             sendMessage(#Text { text = text });
         };
 
-    // pub fn chat_details(&self) -> ChatDetailsBuilder<R, C> {
-    //     ChatDetailsBuilder::new(self)
-    // }
+        public func chatDetails() : ChatDetails.Builder {
+            ChatDetails.Builder(context)
+        };
 
-    // pub fn chat_events(&self, events: EventsSelectionCriteria) -> ChatEventsBuilder<R, C> {
-    //     ChatEventsBuilder::new(self, events)
-    // }
+        public func chatEvents(events: ChatEventsApi.EventsSelectionCriteria) : ChatEvents.Builder {
+            ChatEvents.Builder(context, events)
+        };
     }
 }
