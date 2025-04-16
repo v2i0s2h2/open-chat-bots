@@ -3,7 +3,7 @@ use serde::Serialize;
 
 use crate::types::{
     AccessGateConfig, AuthToken, ChannelId, ChatPermissions, EventIndex, FrozenGroupInfo,
-    MessageIndex, Milliseconds, TimestampMillis, VersionedRules, VideoCall,
+    MessageIndex, Milliseconds, OCError, TimestampMillis, VersionedRules, VideoCall,
 };
 
 use super::ActionDef;
@@ -41,6 +41,7 @@ pub enum Response {
     NotAuthorized,
     NotFound,
     InternalError(String),
+    Error(OCError),
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
