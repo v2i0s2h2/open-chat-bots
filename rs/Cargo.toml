@@ -2,14 +2,8 @@
 members = [
     "canister/examples/hello",
     "canister/examples/echo",
-    "canister/examples/greet/canister",
-    "canister/examples/greet/loader",
     "canister/examples/reminder",
     "canister/sdk",
-    "offchain/examples/dice",
-    "offchain/examples/discord",
-    "offchain/examples/llama",
-    "offchain/sdk",
     "sdk",
 ]
 resolver = "2"
